@@ -1,0 +1,158 @@
+pipeline:
+  name: "full-feature-showcase"
+
+  # ── Global defaults ──────────────────────────────────────────────
+  # Applied to every agent unless overridden at the step level.
+  defaults:
+    command: "claude"
+    args: ["--dangerously-skip-permissions", "-p"]
+    timeout: "10m"
+    on_error: "stop"
+    env:
+      PROJECT_ROOT: "/home/user/myproject"
+    working_dir: "/home/user/myproject"
+
+  # ── Pipeline-level loop ─────────────────────────────────────────
+  # Wraps the entire steps list. count: 0 means infinite.
+  loop:
+    count: 2
+    delay: "30s"
+
+  steps:
+    # ── 1. Simple one-line prompt ────────────────────────────────
+    # Resolves to: claude --dangerously-skip-permissions -p "Analyze ..."
+    - name: "analyze"
+      prompt: "Analyze the project structure and list all source files"
+
+    # ── 2. Multi-line prompt (| preserves newlines) ──────────────
+    - name: "refactor"
+      prompt: |
+        Review the codebase and refactor where needed.
+        Focus on:
+        - removing code duplication
+        - improving naming conventions
+        - simplifying complex functions
+        Do not change public API signatures.
+
+    # ── 3. Multi-line prompt (> folds into a single line) ────────
+    - name: "summarize"
+      prompt: >
+        Read every Go source file in this project
+        and produce a one-paragraph summary describing
+        what the project does and how its packages relate.
+
+    # ── 4. Step-level loop ───────────────────────────────────────
+    # Repeats the same agent 3 times before moving to the next step.
+    - name: "lint-fix"
+      prompt: |
+        Run linters and check the code for issues.
+        If you find problems, fix them immediately.
+        Then verify the fix compiles and tests pass.
+      loop:
+        count: 3
+        delay: "5s"
+
+    # ── 5. Group loop ────────────────────────────────────────────
+    # Runs a sequence of agents as a unit, repeated N times.
+    # develop → review → develop → review → ...
+    - group: "develop-review-cycle"
+      loop:
+        count: 5
+        delay: "10s"
+      steps:
+        - name: "develop"
+          prompt: |
+            Pick the next task from the TODO list.
+            Implement it with tests.
+            Make sure all tests pass before finishing.
+
+        - name: "code-review"
+          prompt: |
+            Review the changes made in the previous develop step.
+            Check for:
+            1. Security vulnerabilities
+            2. Performance regressions
+            3. Missing error handling
+            4. Test coverage gaps
+            If you find issues, fix them immediately.
+
+    # ── 6. Nested groups ─────────────────────────────────────────
+    # Groups can contain other groups for complex workflows.
+    - group: "qa-cycle"
+      loop:
+        count: 2
+      steps:
+        - name: "run-tests"
+          command: "make"
+          args: ["test"]
+          timeout: "5m"
+          on_error: "continue"
+
+        - group: "fix-and-verify"
+          loop:
+            count: 3
+          steps:
+            - name: "fix-failures"
+              prompt: "Look at the test output and fix any failing tests."
+            - name: "verify"
+              command: "make"
+              args: ["test"]
+              timeout: "5m"
+
+    # ── 7. Override command entirely ─────────────────────────────
+    # Ignores defaults.command, runs a shell command instead.
+    - name: "build"
+      command: "make"
+      args: ["build"]
+      timeout: "5m"
+      on_error: "stop"
+
+    # ── 8. Override only args (keep a different command) ─────────
+    # Uses claude but with different flags than defaults.
+    - name: "final-review"
+      command: "claude"
+      args: ["-p"]
+      prompt: |
+        Final review of all changes in this session.
+        Provide a structured summary:
+        - what was added
+        - what was changed
+        - what was removed
+
+    # ── 9. Step-level env override ───────────────────────────────
+    # Inherits defaults.env, overrides or adds new vars.
+    - name: "debug-check"
+      prompt: "Run the app in debug mode and check for warnings"
+      env:
+        DEBUG: "true"
+        EXTRA: "verbose"
+
+    # ── 10. Custom working directory ─────────────────────────────
+    # Overrides defaults.working_dir for this step only.
+    - name: "check-docs"
+      prompt: "Verify all public functions have documentation"
+      working_dir: "/home/user/myproject/docs"
+
+    # ── 11. Retry on error ───────────────────────────────────────
+    # If the agent fails, retry up to 3 times with a 10s delay.
+    - name: "deploy"
+      command: "make"
+      args: ["deploy"]
+      timeout: "15m"
+      on_error: "retry"
+      retry_count: 3
+      retry_delay: "10s"
+
+    # ── 12. Continue on error ────────────────────────────────────
+    # Failure does not stop the pipeline; next step runs regardless.
+    - name: "optional-notify"
+      command: "curl"
+      args: ["-X", "POST", "https://hooks.slack.com/trigger/example"]
+      timeout: "30s"
+      on_error: "continue"
+
+    # ── 13. Custom timeout ───────────────────────────────────────
+    # Overrides defaults.timeout for a long-running step.
+    - name: "heavy-analysis"
+      prompt: "Perform deep static analysis of the entire codebase"
+      timeout: "30m"
