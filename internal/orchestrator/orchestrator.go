@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -190,16 +191,26 @@ func (o *Orchestrator) processEvent(ctx context.Context, ev event.Event) {
 
 	// Build and run pipeline — steps are rendered just-in-time with current data
 	p := &pipeline.Pipeline{
-		Name:     fmt.Sprintf("%s/%s", ev.Pipeline, ev.ID),
-		Steps:    pipelineDef.Steps,
-		Defaults: o.Config.Defaults,
-		Loop:     config.LoopConfig{Count: 1},
-		Logger:   logger,
-		Actions:  o.Actions,
-		Data:     data,
+		Name:       fmt.Sprintf("%s/%s", ev.Pipeline, ev.ID),
+		Steps:      pipelineDef.Steps,
+		Defaults:   o.Config.Defaults,
+		Loop:       config.LoopConfig{Count: 1},
+		Logger:     logger,
+		Actions:    o.Actions,
+		Data:       data,
+		StopLabels: pipelineDef.StopLabels,
+		GitLab:     o.GitLab,
+		Project:    ev.Data["project"],
+		IssueIID:   ev.Data["issue_iid"],
 	}
 
 	if err := p.Run(ctx); err != nil {
+		if errors.Is(err, pipeline.ErrNeedsHuman) {
+			logger.Info("agent requested human input", "event_id", ev.ID)
+			o.applyTransition(ctx, ev, pipelineDef.State.OnNeedsHuman)
+			o.State.Unlock(ev.ID)
+			return
+		}
 		logger.Error("pipeline failed", "error", err)
 		o.applyTransition(ctx, ev, pipelineDef.State.OnFailure)
 		o.State.Unlock(ev.ID)

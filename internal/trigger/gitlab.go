@@ -189,6 +189,22 @@ func (c *GitLabClient) CloseIssue(ctx context.Context, project, iid string) erro
 	})
 }
 
+// GetIssueLabels fetches the current labels on a GitLab issue.
+func (c *GitLabClient) GetIssueLabels(ctx context.Context, project, iid string) ([]string, error) {
+	encoded := encodeProject(project)
+	data, err := c.apiGet(ctx, fmt.Sprintf("/projects/%s/issues/%s", encoded, iid))
+	if err != nil {
+		return nil, fmt.Errorf("get issue labels: %w", err)
+	}
+	var issue struct {
+		Labels []string `json:"labels"`
+	}
+	if err := json.Unmarshal(data, &issue); err != nil {
+		return nil, fmt.Errorf("parse issue labels: %w", err)
+	}
+	return issue.Labels, nil
+}
+
 // ── GitLab Issues Trigger ──────────────────────────────────────────────────
 
 type GitLabIssuesTrigger struct {

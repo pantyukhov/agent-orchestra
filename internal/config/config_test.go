@@ -213,6 +213,62 @@ func TestValidate_EmptyGroup(t *testing.T) {
 	}
 }
 
+func TestLoadOrchestratorWithStopLabels(t *testing.T) {
+	yaml := `
+orchestrator:
+  name: "test-stop-labels"
+  defaults:
+    command: "echo"
+  triggers:
+    - name: "t1"
+      type: "gitlab-issues"
+      gitlab:
+        project: "group/project"
+        labels: ["ai:todo"]
+      pipeline: "handle-task"
+  pipelines:
+    handle-task:
+      state:
+        on_start:
+          remove_labels: ["ai:todo"]
+          add_labels: ["ai:in-progress"]
+        on_success:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:done"]
+        on_failure:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:failed"]
+        on_needs_human:
+          remove_labels: ["ai:in-progress"]
+      stop_labels: ["ai:needs-human"]
+      steps:
+        - name: "implement"
+          prompt: "do work"
+`
+	path := filepath.Join(t.TempDir(), "test.yaml")
+	os.WriteFile(path, []byte(yaml), 0644)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	p := cfg.Orchestrator.Pipelines["handle-task"]
+
+	// Verify stop_labels
+	if len(p.StopLabels) != 1 || p.StopLabels[0] != "ai:needs-human" {
+		t.Errorf("expected stop_labels [ai:needs-human], got %v", p.StopLabels)
+	}
+
+	// Verify on_needs_human
+	if len(p.State.OnNeedsHuman.RemoveLabels) != 1 || p.State.OnNeedsHuman.RemoveLabels[0] != "ai:in-progress" {
+		t.Errorf("expected on_needs_human.remove_labels [ai:in-progress], got %v", p.State.OnNeedsHuman.RemoveLabels)
+	}
+	if len(p.State.OnNeedsHuman.AddLabels) != 0 {
+		t.Errorf("expected on_needs_human.add_labels to be empty, got %v", p.State.OnNeedsHuman.AddLabels)
+	}
+}
+
 func TestIsAction(t *testing.T) {
 	s := StepConfig{Action: "git-save"}
 	if !s.IsAction() {

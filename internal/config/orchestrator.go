@@ -47,14 +47,16 @@ type GitLabConfig struct {
 }
 
 type PipelineDef struct {
-	State StateConfig  `yaml:"state"`
-	Steps []StepConfig `yaml:"steps"`
+	State      StateConfig  `yaml:"state"`
+	StopLabels []string     `yaml:"stop_labels"`
+	Steps      []StepConfig `yaml:"steps"`
 }
 
 type StateConfig struct {
-	OnStart   StateTransition `yaml:"on_start"`
-	OnSuccess StateTransition `yaml:"on_success"`
-	OnFailure StateTransition `yaml:"on_failure"`
+	OnStart      StateTransition `yaml:"on_start"`
+	OnSuccess    StateTransition `yaml:"on_success"`
+	OnFailure    StateTransition `yaml:"on_failure"`
+	OnNeedsHuman StateTransition `yaml:"on_needs_human"`
 }
 
 type StateTransition struct {

@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,14 +13,28 @@ import (
 	"github.com/pavelpantiukhov/agent-orchestra/internal/tmpl"
 )
 
+// ErrNeedsHuman is returned when a stop label is detected, indicating the agent
+// requested human input and the pipeline should stop gracefully.
+var ErrNeedsHuman = errors.New("pipeline stopped: agent requested human input")
+
+// LabelChecker is an interface for fetching issue labels, so that the pipeline
+// package does not depend on the trigger package directly.
+type LabelChecker interface {
+	GetIssueLabels(ctx context.Context, project, iid string) ([]string, error)
+}
+
 type Pipeline struct {
-	Name     string
-	Steps    []config.StepConfig
-	Defaults config.DefaultsConfig
-	Loop     config.LoopConfig
-	Logger   *slog.Logger
-	Actions  *action.Runner           // optional, for built-in action steps
-	Data     map[string]interface{}   // template data (event data + step outputs)
+	Name       string
+	Steps      []config.StepConfig
+	Defaults   config.DefaultsConfig
+	Loop       config.LoopConfig
+	Logger     *slog.Logger
+	Actions    *action.Runner           // optional, for built-in action steps
+	Data       map[string]interface{}   // template data (event data + step outputs)
+	StopLabels []string                 // labels that stop the pipeline (e.g. "ai:needs-human")
+	GitLab     LabelChecker             // optional, for checking stop labels
+	Project    string                   // GitLab project path (for label checks)
+	IssueIID   string                   // GitLab issue IID (for label checks)
 }
 
 // NewFromConfig creates a pipeline from a PipelineConfig (simple mode).
@@ -108,8 +123,42 @@ func (p *Pipeline) runSteps(ctx context.Context, steps []config.StepConfig) erro
 			if step.CaptureOutput && result != nil && result.Output != "" {
 				p.storeStepOutput(step.Name, result)
 			}
+
+			// Check stop labels after successful agent step
+			if err := p.checkStopLabels(ctx); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
+}
+
+// checkStopLabels fetches the current issue labels and returns ErrNeedsHuman
+// if any configured stop label is present. Returns nil if no stop labels are
+// configured or if the label check fails (non-fatal).
+func (p *Pipeline) checkStopLabels(ctx context.Context) error {
+	if len(p.StopLabels) == 0 || p.GitLab == nil || p.Project == "" || p.IssueIID == "" {
+		return nil
+	}
+
+	labels, err := p.GitLab.GetIssueLabels(ctx, p.Project, p.IssueIID)
+	if err != nil {
+		p.Logger.Warn("failed to check stop labels", "error", err)
+		return nil // don't fail pipeline on label check error
+	}
+
+	labelSet := make(map[string]bool, len(labels))
+	for _, l := range labels {
+		labelSet[l] = true
+	}
+
+	for _, sl := range p.StopLabels {
+		if labelSet[sl] {
+			p.Logger.Info("stop label detected", "label", sl)
+			return ErrNeedsHuman
+		}
+	}
+
 	return nil
 }
 

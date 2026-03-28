@@ -2,12 +2,28 @@ package pipeline
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"testing"
 
 	"github.com/pavelpantiukhov/agent-orchestra/internal/config"
 )
+
+// mockLabelChecker implements LabelChecker for testing.
+type mockLabelChecker struct {
+	labels map[string][]string // key: "project/iid"
+	err    error
+}
+
+func (m *mockLabelChecker) GetIssueLabels(_ context.Context, project, iid string) ([]string, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	key := project + "/" + iid
+	return m.labels[key], nil
+}
 
 var testLogger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 
@@ -283,6 +299,125 @@ func TestPipelineWithoutData(t *testing.T) {
 			{Name: "echo", Command: "echo", Args: []string{"hello"}, OnError: "stop"},
 		},
 	})
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestStopLabels_Detected(t *testing.T) {
+	checker := &mockLabelChecker{
+		labels: map[string][]string{
+			"group/project/42": {"ai:in-progress", "ai:needs-human"},
+		},
+	}
+
+	p := &Pipeline{
+		Name: "test-stop-labels",
+		Steps: []config.StepConfig{
+			{Name: "step1", Command: "echo", Args: []string{"working"}, OnError: "stop"},
+			{Name: "step2", Command: "echo", Args: []string{"should not run"}, OnError: "stop"},
+		},
+		Defaults:   config.DefaultsConfig{},
+		Loop:       config.LoopConfig{Count: 1},
+		Logger:     testLogger,
+		StopLabels: []string{"ai:needs-human"},
+		GitLab:     checker,
+		Project:    "group/project",
+		IssueIID:   "42",
+	}
+
+	err := p.Run(context.Background())
+	if !errors.Is(err, ErrNeedsHuman) {
+		t.Fatalf("expected ErrNeedsHuman, got: %v", err)
+	}
+}
+
+func TestStopLabels_NotPresent(t *testing.T) {
+	checker := &mockLabelChecker{
+		labels: map[string][]string{
+			"group/project/42": {"ai:in-progress"},
+		},
+	}
+
+	p := &Pipeline{
+		Name: "test-stop-labels-absent",
+		Steps: []config.StepConfig{
+			{Name: "step1", Command: "echo", Args: []string{"working"}, OnError: "stop"},
+			{Name: "step2", Command: "echo", Args: []string{"also runs"}, OnError: "stop"},
+		},
+		Defaults:   config.DefaultsConfig{},
+		Loop:       config.LoopConfig{Count: 1},
+		Logger:     testLogger,
+		StopLabels: []string{"ai:needs-human"},
+		GitLab:     checker,
+		Project:    "group/project",
+		IssueIID:   "42",
+	}
+
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestStopLabels_NoConfig(t *testing.T) {
+	// Pipeline without stop_labels should work exactly as before
+	p := &Pipeline{
+		Name: "test-no-stop-labels",
+		Steps: []config.StepConfig{
+			{Name: "step1", Command: "echo", Args: []string{"hello"}, OnError: "stop"},
+		},
+		Defaults: config.DefaultsConfig{},
+		Loop:     config.LoopConfig{Count: 1},
+		Logger:   testLogger,
+	}
+
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestStopLabels_APIErrorNonFatal(t *testing.T) {
+	// If the label check API fails, the pipeline should continue (not fail)
+	checker := &mockLabelChecker{
+		err: fmt.Errorf("network error"),
+	}
+
+	p := &Pipeline{
+		Name: "test-stop-labels-api-error",
+		Steps: []config.StepConfig{
+			{Name: "step1", Command: "echo", Args: []string{"working"}, OnError: "stop"},
+			{Name: "step2", Command: "echo", Args: []string{"also runs"}, OnError: "stop"},
+		},
+		Defaults:   config.DefaultsConfig{},
+		Loop:       config.LoopConfig{Count: 1},
+		Logger:     testLogger,
+		StopLabels: []string{"ai:needs-human"},
+		GitLab:     checker,
+		Project:    "group/project",
+		IssueIID:   "42",
+	}
+
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("expected pipeline to continue despite API error, got: %v", err)
+	}
+}
+
+func TestStopLabels_MissingGitLabClient(t *testing.T) {
+	// If GitLab client is nil, stop labels are silently skipped
+	p := &Pipeline{
+		Name: "test-stop-labels-no-client",
+		Steps: []config.StepConfig{
+			{Name: "step1", Command: "echo", Args: []string{"working"}, OnError: "stop"},
+		},
+		Defaults:   config.DefaultsConfig{},
+		Loop:       config.LoopConfig{Count: 1},
+		Logger:     testLogger,
+		StopLabels: []string{"ai:needs-human"},
+		// GitLab is nil
+		Project:  "group/project",
+		IssueIID: "42",
+	}
+
 	if err := p.Run(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
