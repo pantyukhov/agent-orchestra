@@ -1,0 +1,163 @@
+orchestrator:
+  name: "autonomous-ai"
+  project_root: "."
+
+  # ── Global defaults ──────────────────────────────────────────────
+  defaults:
+    command: "claude"
+    args: ["--dangerously-skip-permissions", "-p"]
+    timeout: "30m"
+
+  # ── Concurrency ─────────────────────────────────────────────────
+  concurrency:
+    max: 1    # how many events to process in parallel
+
+  # ── Per-task logging ────────────────────────────────────────────
+  logging:
+    dir: "./logs"
+    per_task: true
+
+  # ── State persistence ──────────────────────────────────────────
+  persistence:
+    file: ".agent-orchestra.state.json"
+
+  # ── Triggers (event sources) ───────────────────────────────────
+  # Each trigger polls an external system and emits events.
+  # Lower priority number = processed first.
+  triggers:
+    # Priority 1: Human answered a blocker question
+    - name: "answered-questions"
+      type: "gitlab-issues"
+      gitlab:
+        project: "mygroup/myproject"
+        url: "https://gitlab.example.com"      # optional, defaults to GITLAB_URL env
+        labels: ["ai:answered"]
+      poll_interval: "2m"
+      priority: 1
+      pipeline: "handle-answered"
+
+    # Priority 2: CI tests failed on an open MR
+    - name: "ci-failures"
+      type: "gitlab-ci"
+      gitlab:
+        project: "mygroup/myproject"
+        url: "https://gitlab.example.com"
+        username: "myuser"
+        watch_jobs: ["ginkgo*", "unit-tests"]   # glob patterns for job names
+      poll_interval: "2m"
+      priority: 2
+      pipeline: "handle-ci-fix"
+
+    # Priority 3: New task labeled ai:todo
+    - name: "new-tasks"
+      type: "gitlab-issues"
+      gitlab:
+        project: "mygroup/myproject"
+        url: "https://gitlab.example.com"
+        labels: ["ai:todo"]
+      poll_interval: "2m"
+      priority: 3
+      pipeline: "handle-new-task"
+
+  # ── Pipelines ──────────────────────────────────────────────────
+  # Each pipeline defines: state machine + steps.
+  # Steps have access to event data via {{ .key }} templates.
+  #
+  # Available template variables (gitlab-issues trigger):
+  #   {{ .issue_iid }}    - GitLab issue IID
+  #   {{ .issue_title }}  - issue title
+  #   {{ .issue_url }}    - issue web URL
+  #   {{ .jira_id }}      - Jira ID extracted from title (e.g. "AS-123")
+  #   {{ .project }}      - GitLab project path
+  #   {{ .labels }}       - comma-separated labels
+  #
+  # Available template variables (gitlab-ci trigger):
+  #   {{ .mr_iid }}       - MR IID
+  #   {{ .mr_title }}     - MR title
+  #   {{ .mr_branch }}    - source branch
+  #   {{ .mr_url }}       - MR web URL
+  #   {{ .pipeline_id }}  - failed pipeline ID
+  #   {{ .failed_jobs }}  - comma-separated failed job names
+  #   {{ .jira_id }}      - Jira ID from branch/title
+  #   {{ .project }}      - GitLab project path
+
+  pipelines:
+    # ── New task pipeline ────────────────────────────────────────
+    handle-new-task:
+      state:
+        on_start:
+          remove_labels: ["ai:todo"]
+          add_labels: ["ai:in-progress"]
+        on_success:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:done"]
+        on_failure:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:failed"]
+      steps:
+        # Save any uncommitted work
+        - action: "git-save"
+          message: "wip: auto-save before switching to {{ .jira_id }}"
+
+        # Checkout or create task branch
+        - action: "git-checkout"
+          branch: "feat/{{ .jira_id }}"
+          create_from: "origin/master"
+
+        # Run the AI agent
+        - name: "implement"
+          prompt: "/issues-worder {{ .jira_id }}"
+
+        # Leave a comment on the issue
+        - action: "gitlab-comment"
+          issue: "{{ .issue_iid }}"
+          body: "AI completed work on {{ .jira_id }}"
+
+    # ── Answered question pipeline ───────────────────────────────
+    handle-answered:
+      state:
+        on_start:
+          remove_labels: ["ai:answered"]
+          add_labels: ["ai:in-progress"]
+        on_success:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:done"]
+          close_issue: true
+        on_failure:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:failed"]
+      steps:
+        - action: "git-save"
+
+        - action: "git-checkout"
+          branch: "feat/{{ .jira_id }}"
+
+        - name: "resume"
+          prompt: "/issues-worder {{ .jira_id }}"
+
+    # ── CI fix pipeline ──────────────────────────────────────────
+    handle-ci-fix:
+      state:
+        on_start:
+          add_labels: ["ai:in-progress"]
+        on_success:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:done"]
+        on_failure:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:failed"]
+      steps:
+        - action: "git-checkout"
+          branch: "{{ .mr_branch }}"
+
+        - name: "fix-ci"
+          prompt: |
+            CI failed on MR !{{ .mr_iid }}.
+            Failed jobs: {{ .failed_jobs }}
+            Branch: {{ .mr_branch }}
+
+            Fix the failing tests and push.
+          timeout: "20m"
+          on_error: "retry"
+          retry_count: 2
+          retry_delay: "30s"

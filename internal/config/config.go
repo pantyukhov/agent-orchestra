@@ -9,7 +9,15 @@ import (
 )
 
 type Config struct {
-	Pipeline PipelineConfig `yaml:"pipeline"`
+	Pipeline     *PipelineConfig     `yaml:"pipeline"`
+	Orchestrator *OrchestratorConfig `yaml:"orchestrator"`
+}
+
+func (c *Config) Mode() string {
+	if c.Orchestrator != nil {
+		return "orchestrator"
+	}
+	return "pipeline"
 }
 
 type PipelineConfig struct {
@@ -33,7 +41,7 @@ type LoopConfig struct {
 	Delay string `yaml:"delay"` // Go duration string, e.g. "5s"
 }
 
-// StepConfig is either a single agent (Name is set) or a group (Group is set).
+// StepConfig is either a single agent (Name), a group (Group), or a built-in action (Action).
 type StepConfig struct {
 	// Agent fields
 	Name       string            `yaml:"name"`
@@ -48,21 +56,36 @@ type StepConfig struct {
 	RetryDelay string            `yaml:"retry_delay"`
 
 	// Group fields
-	Group string       `yaml:"group"` // if set, this is a group of agents
-	Steps []StepConfig `yaml:"steps"` // nested steps for groups
+	Group string       `yaml:"group"`
+	Steps []StepConfig `yaml:"steps"`
+
+	// Built-in action
+	Action     string `yaml:"action"`      // git-save, git-checkout, gitlab-comment, etc.
+	Branch     string `yaml:"branch"`      // git-checkout
+	CreateFrom string `yaml:"create_from"` // git-checkout
+	Message    string `yaml:"message"`     // git-save
+	Issue      string `yaml:"issue"`       // gitlab-comment, gitlab-close-issue
+	Body       string `yaml:"body"`        // gitlab-comment
 
 	// Common
-	Loop LoopConfig `yaml:"loop"` // works for both agents and groups
+	Loop LoopConfig `yaml:"loop"`
 }
 
 func (s *StepConfig) IsGroup() bool {
 	return s.Group != ""
 }
 
-// Label returns display name — either Name or Group.
+func (s *StepConfig) IsAction() bool {
+	return s.Action != ""
+}
+
+// Label returns display name.
 func (s *StepConfig) Label() string {
 	if s.Group != "" {
 		return s.Group
+	}
+	if s.Action != "" {
+		return s.Action
 	}
 	return s.Name
 }
@@ -104,7 +127,6 @@ func (s *StepConfig) ResolvedEnv(defaults DefaultsConfig) map[string]string {
 	return merged
 }
 
-// ResolvedWorkingDir returns step working_dir or defaults.
 func (s *StepConfig) ResolvedWorkingDir(defaults DefaultsConfig) string {
 	if s.WorkingDir != "" {
 		return s.WorkingDir
@@ -112,7 +134,6 @@ func (s *StepConfig) ResolvedWorkingDir(defaults DefaultsConfig) string {
 	return defaults.WorkingDir
 }
 
-// ResolvedTimeout returns step timeout or defaults.
 func (s *StepConfig) ResolvedTimeout(defaults DefaultsConfig) string {
 	if s.Timeout != "" {
 		return s.Timeout
@@ -120,7 +141,6 @@ func (s *StepConfig) ResolvedTimeout(defaults DefaultsConfig) string {
 	return defaults.Timeout
 }
 
-// ResolvedOnError returns step on_error or defaults, falling back to "stop".
 func (s *StepConfig) ResolvedOnError(defaults DefaultsConfig) string {
 	if s.OnError != "" {
 		return s.OnError
@@ -142,15 +162,25 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parsing config %s: %w", path, err)
 	}
 
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+	switch cfg.Mode() {
+	case "orchestrator":
+		if err := cfg.Orchestrator.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid config: %w", err)
+		}
+	case "pipeline":
+		if cfg.Pipeline == nil {
+			return nil, fmt.Errorf("config must have either 'pipeline' or 'orchestrator' section")
+		}
+		if err := cfg.validatePipeline(); err != nil {
+			return nil, fmt.Errorf("invalid config: %w", err)
+		}
 	}
 
 	return &cfg, nil
 }
 
-func (c *Config) Validate() error {
-	p := &c.Pipeline
+func (c *Config) validatePipeline() error {
+	p := c.Pipeline
 	if p.Name == "" {
 		return fmt.Errorf("pipeline.name is required")
 	}
@@ -188,7 +218,6 @@ func (c *Config) validateSteps(steps []StepConfig, defaults DefaultsConfig, pref
 		path := fmt.Sprintf("%sstep[%d]", prefix, i)
 
 		if s.IsGroup() {
-			// Validate group
 			if len(s.Steps) == 0 {
 				return fmt.Errorf("%s group %q: must have at least one nested step", path, s.Group)
 			}
@@ -197,16 +226,20 @@ func (c *Config) validateSteps(steps []StepConfig, defaults DefaultsConfig, pref
 					return fmt.Errorf("%s group %q: invalid loop.delay %q: %w", path, s.Group, s.Loop.Delay, err)
 				}
 			}
-			// Recurse into nested steps
 			if err := c.validateSteps(s.Steps, defaults, fmt.Sprintf("%s group %q → ", path, s.Group)); err != nil {
 				return err
 			}
 			continue
 		}
 
+		if s.IsAction() {
+			// Actions don't need command validation
+			continue
+		}
+
 		// Validate agent
 		if s.Name == "" {
-			return fmt.Errorf("%s: name or group is required", path)
+			return fmt.Errorf("%s: name, group, or action is required", path)
 		}
 
 		cmd, _ := s.ResolvedCommand(defaults)

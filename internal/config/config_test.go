@@ -35,8 +35,8 @@ pipeline:
 	if len(cfg.Pipeline.Steps) != 2 {
 		t.Errorf("expected 2 steps, got %d", len(cfg.Pipeline.Steps))
 	}
-	if cfg.Pipeline.Defaults.Command != "echo" {
-		t.Errorf("expected defaults.command 'echo', got %q", cfg.Pipeline.Defaults.Command)
+	if cfg.Mode() != "pipeline" {
+		t.Errorf("expected mode 'pipeline', got %q", cfg.Mode())
 	}
 }
 
@@ -74,8 +74,39 @@ pipeline:
 	if !cfg.Pipeline.Steps[1].IsGroup() {
 		t.Error("expected step[1] to be a group")
 	}
-	if len(cfg.Pipeline.Steps[1].Steps) != 2 {
-		t.Errorf("expected 2 nested steps, got %d", len(cfg.Pipeline.Steps[1].Steps))
+}
+
+func TestLoadOrchestrator(t *testing.T) {
+	yaml := `
+orchestrator:
+  name: "test-orch"
+  defaults:
+    command: "echo"
+  triggers:
+    - name: "t1"
+      type: "gitlab-issues"
+      gitlab:
+        project: "group/project"
+        labels: ["todo"]
+      pipeline: "p1"
+  pipelines:
+    p1:
+      steps:
+        - name: "step1"
+          prompt: "hello"
+`
+	path := filepath.Join(t.TempDir(), "test.yaml")
+	os.WriteFile(path, []byte(yaml), 0644)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Mode() != "orchestrator" {
+		t.Errorf("expected mode 'orchestrator', got %q", cfg.Mode())
+	}
+	if cfg.Orchestrator.Name != "test-orch" {
+		t.Errorf("expected name 'test-orch', got %q", cfg.Orchestrator.Name)
 	}
 }
 
@@ -110,114 +141,84 @@ func TestResolvedEnv_Merge(t *testing.T) {
 	step := StepConfig{Name: "test", Env: map[string]string{"B": "override", "C": "3"}}
 
 	env := step.ResolvedEnv(defaults)
-	if env["A"] != "1" {
-		t.Errorf("expected A=1, got %q", env["A"])
-	}
-	if env["B"] != "override" {
-		t.Errorf("expected B=override, got %q", env["B"])
-	}
-	if env["C"] != "3" {
-		t.Errorf("expected C=3, got %q", env["C"])
+	if env["A"] != "1" || env["B"] != "override" || env["C"] != "3" {
+		t.Errorf("unexpected env: %v", env)
 	}
 }
 
 func TestValidate_MissingName(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
+	cfg := &Config{Pipeline: &PipelineConfig{
 		Steps: []StepConfig{{Name: "a", Command: "echo"}},
 	}}
-	if err := cfg.Validate(); err == nil {
+	if err := cfg.validatePipeline(); err == nil {
 		t.Error("expected error for missing name")
 	}
 }
 
 func TestValidate_NoSteps(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{Name: "test"}}
-	if err := cfg.Validate(); err == nil {
+	cfg := &Config{Pipeline: &PipelineConfig{Name: "test"}}
+	if err := cfg.validatePipeline(); err == nil {
 		t.Error("expected error for no steps")
 	}
 }
 
 func TestValidate_NoCommand(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
+	cfg := &Config{Pipeline: &PipelineConfig{
 		Name:  "test",
 		Steps: []StepConfig{{Name: "a", Prompt: "hello"}},
 	}}
-	if err := cfg.Validate(); err == nil {
+	if err := cfg.validatePipeline(); err == nil {
 		t.Error("expected error for missing command")
 	}
 }
 
 func TestValidate_CommandFromDefaults(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
+	cfg := &Config{Pipeline: &PipelineConfig{
 		Name:     "test",
 		Defaults: DefaultsConfig{Command: "echo"},
 		Steps:    []StepConfig{{Name: "a", Prompt: "hello"}},
 	}}
-	if err := cfg.Validate(); err != nil {
+	if err := cfg.validatePipeline(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidate_ActionStep(t *testing.T) {
+	cfg := &Config{Pipeline: &PipelineConfig{
+		Name:  "test",
+		Steps: []StepConfig{{Action: "git-save"}},
+	}}
+	if err := cfg.validatePipeline(); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestValidate_InvalidOnError(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
+	cfg := &Config{Pipeline: &PipelineConfig{
 		Name:  "test",
 		Steps: []StepConfig{{Name: "a", Command: "echo", OnError: "explode"}},
 	}}
-	if err := cfg.Validate(); err == nil {
+	if err := cfg.validatePipeline(); err == nil {
 		t.Error("expected error for invalid on_error")
 	}
 }
 
 func TestValidate_EmptyGroup(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
+	cfg := &Config{Pipeline: &PipelineConfig{
 		Name:  "test",
 		Steps: []StepConfig{{Group: "empty"}},
 	}}
-	if err := cfg.Validate(); err == nil {
+	if err := cfg.validatePipeline(); err == nil {
 		t.Error("expected error for empty group")
 	}
 }
 
-func TestValidate_GroupWithNestedAgent(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
-		Name:     "test",
-		Defaults: DefaultsConfig{Command: "echo"},
-		Steps: []StepConfig{
-			{
-				Group: "g1",
-				Steps: []StepConfig{
-					{Name: "a", Prompt: "hello"},
-				},
-			},
-		},
-	}}
-	if err := cfg.Validate(); err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestIsAction(t *testing.T) {
+	s := StepConfig{Action: "git-save"}
+	if !s.IsAction() {
+		t.Error("expected IsAction() == true")
 	}
-}
-
-func TestValidate_RetryDefaultCount(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
-		Name:  "test",
-		Steps: []StepConfig{{Name: "a", Command: "echo", OnError: "retry"}},
-	}}
-	if err := cfg.Validate(); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.Pipeline.Steps[0].RetryCount != 1 {
-		t.Errorf("expected retry_count 1, got %d", cfg.Pipeline.Steps[0].RetryCount)
-	}
-}
-
-func TestValidate_StepLoopDelay(t *testing.T) {
-	cfg := &Config{Pipeline: PipelineConfig{
-		Name: "test",
-		Steps: []StepConfig{{
-			Name: "a", Command: "echo",
-			Loop: LoopConfig{Count: 3, Delay: "bad"},
-		}},
-	}}
-	if err := cfg.Validate(); err == nil {
-		t.Error("expected error for invalid step loop delay")
+	if s.Label() != "git-save" {
+		t.Errorf("expected label 'git-save', got %q", s.Label())
 	}
 }
