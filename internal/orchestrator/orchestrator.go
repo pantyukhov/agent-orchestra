@@ -185,23 +185,18 @@ func (o *Orchestrator) processEvent(ctx context.Context, ev event.Event) {
 	// Apply state transition: on_start
 	o.applyTransition(ctx, ev, pipelineDef.State.OnStart)
 
-	// Render templates in steps
-	renderedSteps, err := tmpl.RenderSteps(pipelineDef.Steps, ev.Data)
-	if err != nil {
-		logger.Error("template rendering failed", "error", err)
-		o.applyTransition(ctx, ev, pipelineDef.State.OnFailure)
-		o.State.Unlock(ev.ID)
-		return
-	}
+	// Convert event data to interface map for template rendering
+	data := tmpl.StringData(ev.Data)
 
-	// Build and run pipeline
+	// Build and run pipeline — steps are rendered just-in-time with current data
 	p := &pipeline.Pipeline{
 		Name:     fmt.Sprintf("%s/%s", ev.Pipeline, ev.ID),
-		Steps:    renderedSteps,
+		Steps:    pipelineDef.Steps,
 		Defaults: o.Config.Defaults,
 		Loop:     config.LoopConfig{Count: 1},
 		Logger:   logger,
 		Actions:  o.Actions,
+		Data:     data,
 	}
 
 	if err := p.Run(ctx); err != nil {

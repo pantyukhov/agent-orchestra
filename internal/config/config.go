@@ -67,6 +67,9 @@ type StepConfig struct {
 	Issue      string `yaml:"issue"`       // gitlab-comment, gitlab-close-issue
 	Body       string `yaml:"body"`        // gitlab-comment
 
+	// Output capture
+	CaptureOutput bool `yaml:"capture_output"` // capture stdout for use in later steps
+
 	// Common
 	Loop LoopConfig `yaml:"loop"`
 }

@@ -150,3 +150,140 @@ func TestContextCancel(t *testing.T) {
 		t.Error("expected error from cancelled context")
 	}
 }
+
+func TestCaptureOutputPassBetweenSteps(t *testing.T) {
+	// Step 1 outputs "review-feedback", step 2 uses it via template
+	p := &Pipeline{
+		Name: "test-capture-pass",
+		Steps: []config.StepConfig{
+			{
+				Name:          "review",
+				Command:       "echo",
+				Args:          []string{"found 3 bugs"},
+				OnError:       "stop",
+				CaptureOutput: true,
+			},
+			{
+				Name:    "implement",
+				Command: "echo",
+				Args:    []string{"{{ .steps.review.output }}"},
+				OnError: "stop",
+			},
+		},
+		Defaults: config.DefaultsConfig{},
+		Loop:     config.LoopConfig{Count: 1},
+		Logger:   testLogger,
+		Data:     make(map[string]interface{}),
+	}
+
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify the output was stored
+	stepsData, ok := p.Data["steps"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected steps data in pipeline Data")
+	}
+	reviewData, ok := stepsData["review"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected review data in steps")
+	}
+	output, ok := reviewData["output"].(string)
+	if !ok || output != "found 3 bugs\n" {
+		t.Errorf("expected 'found 3 bugs\\n', got %q", output)
+	}
+}
+
+func TestCaptureOutputInGroupLoop(t *testing.T) {
+	// In a group loop, step outputs should accumulate and be available
+	p := &Pipeline{
+		Name: "test-capture-group",
+		Steps: []config.StepConfig{
+			{
+				Group: "cycle",
+				Loop:  config.LoopConfig{Count: 2, Delay: "10ms"},
+				Steps: []config.StepConfig{
+					{
+						Name:          "producer",
+						Command:       "echo",
+						Args:          []string{"output-data"},
+						OnError:       "stop",
+						CaptureOutput: true,
+					},
+					{
+						Name:    "consumer",
+						Command: "echo",
+						Args:    []string{"got: {{ .steps.producer.output }}"},
+						OnError: "stop",
+					},
+				},
+			},
+		},
+		Defaults: config.DefaultsConfig{},
+		Loop:     config.LoopConfig{Count: 1},
+		Logger:   testLogger,
+		Data:     make(map[string]interface{}),
+	}
+
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify output is stored
+	stepsData := p.Data["steps"].(map[string]interface{})
+	producerData := stepsData["producer"].(map[string]interface{})
+	if producerData["output"] != "output-data\n" {
+		t.Errorf("expected 'output-data\\n', got %q", producerData["output"])
+	}
+}
+
+func TestNoCaptureOutputByDefault(t *testing.T) {
+	p := &Pipeline{
+		Name: "test-no-capture",
+		Steps: []config.StepConfig{
+			{
+				Name:    "step1",
+				Command: "echo",
+				Args:    []string{"not captured"},
+				OnError: "stop",
+			},
+		},
+		Defaults: config.DefaultsConfig{},
+		Loop:     config.LoopConfig{Count: 1},
+		Logger:   testLogger,
+		Data:     make(map[string]interface{}),
+	}
+
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Steps map exists (pre-populated by EnsureStepEntries) but output should be empty default
+	stepsData, ok := p.Data["steps"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected steps map to exist (pre-populated)")
+	}
+	step1Data, ok := stepsData["step1"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected step1 entry to exist")
+	}
+	// Output should be the empty default, not captured data
+	if step1Data["output"] != "" {
+		t.Errorf("expected empty output when capture_output is false, got %q", step1Data["output"])
+	}
+}
+
+func TestPipelineWithoutData(t *testing.T) {
+	// Pipeline without Data field should work (backward compatibility)
+	p := newPipeline(&config.PipelineConfig{
+		Name: "test-no-data",
+		Loop: config.LoopConfig{Count: 1},
+		Steps: []config.StepConfig{
+			{Name: "echo", Command: "echo", Args: []string{"hello"}, OnError: "stop"},
+		},
+	})
+	if err := p.Run(context.Background()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

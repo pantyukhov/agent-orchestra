@@ -114,3 +114,68 @@ func TestRun_WorkingDir(t *testing.T) {
 		t.Fatalf("unexpected error: %v", result.Err)
 	}
 }
+
+func TestRun_CaptureOutput(t *testing.T) {
+	step := config.StepConfig{
+		Name:          "test-capture",
+		Command:       "echo",
+		Args:          []string{"captured line"},
+		CaptureOutput: true,
+	}
+	result := Run(context.Background(), step, emptyDefault, testLogger)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if result.Output != "captured line\n" {
+		t.Errorf("expected 'captured line\\n', got %q", result.Output)
+	}
+}
+
+func TestRun_CaptureOutputMultiLine(t *testing.T) {
+	step := config.StepConfig{
+		Name:          "test-capture-multi",
+		Command:       "sh",
+		Args:          []string{"-c", "echo line1; echo line2; echo line3"},
+		CaptureOutput: true,
+	}
+	result := Run(context.Background(), step, emptyDefault, testLogger)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	expected := "line1\nline2\nline3\n"
+	if result.Output != expected {
+		t.Errorf("expected %q, got %q", expected, result.Output)
+	}
+}
+
+func TestRun_NoCaptureOutput(t *testing.T) {
+	step := config.StepConfig{
+		Name:          "test-no-capture",
+		Command:       "echo",
+		Args:          []string{"not captured"},
+		CaptureOutput: false,
+	}
+	result := Run(context.Background(), step, emptyDefault, testLogger)
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+	if result.Output != "" {
+		t.Errorf("expected empty output, got %q", result.Output)
+	}
+}
+
+func TestRun_CaptureOutputOnFailure(t *testing.T) {
+	step := config.StepConfig{
+		Name:          "test-capture-fail",
+		Command:       "sh",
+		Args:          []string{"-c", "echo partial; exit 1"},
+		CaptureOutput: true,
+	}
+	result := Run(context.Background(), step, emptyDefault, testLogger)
+	if result.Err == nil {
+		t.Error("expected error for failing command")
+	}
+	if result.Output != "partial\n" {
+		t.Errorf("expected 'partial\\n', got %q", result.Output)
+	}
+}

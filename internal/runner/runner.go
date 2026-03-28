@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/pavelpantiukhov/agent-orchestra/internal/config"
@@ -16,6 +17,7 @@ type Result struct {
 	ExitCode int
 	Duration time.Duration
 	Err      error
+	Output   string // captured stdout (only when CaptureOutput=true)
 }
 
 // Run executes an agent command with resolved defaults applied.
@@ -65,11 +67,18 @@ func Run(ctx context.Context, agent config.StepConfig, defaults config.DefaultsC
 		return Result{ExitCode: -1, Duration: time.Since(start), Err: fmt.Errorf("start: %w", err)}
 	}
 
+	var outputBuf strings.Builder
+
 	done := make(chan struct{})
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			logger.Info(scanner.Text(), "agent", agent.Name, "stream", "stdout")
+			line := scanner.Text()
+			logger.Info(line, "agent", agent.Name, "stream", "stdout")
+			if agent.CaptureOutput {
+				outputBuf.WriteString(line)
+				outputBuf.WriteString("\n")
+			}
 		}
 		done <- struct{}{}
 	}()
@@ -88,21 +97,31 @@ func Run(ctx context.Context, agent config.StepConfig, defaults config.DefaultsC
 	err = cmd.Wait()
 	duration := time.Since(start)
 
+	result := Result{Duration: duration}
+	if agent.CaptureOutput {
+		result.Output = outputBuf.String()
+	}
+
 	if err != nil {
 		exitCode := -1
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
 		}
 
+		result.ExitCode = exitCode
+
 		if ctx.Err() == context.DeadlineExceeded {
-			return Result{ExitCode: exitCode, Duration: duration, Err: fmt.Errorf("timeout after %s", timeout)}
+			result.Err = fmt.Errorf("timeout after %s", timeout)
+			return result
 		}
 		if ctx.Err() == context.Canceled {
-			return Result{ExitCode: exitCode, Duration: duration, Err: context.Canceled}
+			result.Err = context.Canceled
+			return result
 		}
 
-		return Result{ExitCode: exitCode, Duration: duration, Err: fmt.Errorf("exit code %d: %w", exitCode, err)}
+		result.Err = fmt.Errorf("exit code %d: %w", exitCode, err)
+		return result
 	}
 
-	return Result{ExitCode: 0, Duration: duration, Err: nil}
+	return result
 }

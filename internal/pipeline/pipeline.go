@@ -9,6 +9,7 @@ import (
 	"github.com/pavelpantiukhov/agent-orchestra/internal/action"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/config"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/runner"
+	"github.com/pavelpantiukhov/agent-orchestra/internal/tmpl"
 )
 
 type Pipeline struct {
@@ -17,7 +18,8 @@ type Pipeline struct {
 	Defaults config.DefaultsConfig
 	Loop     config.LoopConfig
 	Logger   *slog.Logger
-	Actions  *action.Runner // optional, for built-in action steps
+	Actions  *action.Runner           // optional, for built-in action steps
+	Data     map[string]interface{}   // template data (event data + step outputs)
 }
 
 // NewFromConfig creates a pipeline from a PipelineConfig (simple mode).
@@ -32,6 +34,11 @@ func NewFromConfig(cfg *config.PipelineConfig, logger *slog.Logger) *Pipeline {
 }
 
 func (p *Pipeline) Run(ctx context.Context) error {
+	// Pre-populate step entries so templates can reference outputs before they run
+	if p.Data != nil {
+		tmpl.EnsureStepEntries(p.Data, p.Steps)
+	}
+
 	loopDelay := config.ParseDuration(p.Loop.Delay, 0)
 	count := p.Loop.Count
 
@@ -67,31 +74,69 @@ func (p *Pipeline) runSteps(ctx context.Context, steps []config.StepConfig) erro
 			return ctx.Err()
 		}
 
-		if step.IsGroup() {
-			if err := p.runGroup(ctx, step); err != nil {
+		// Render templates just-in-time with current data (includes step outputs)
+		rendered, err := p.renderStep(step)
+		if err != nil {
+			return fmt.Errorf("template render for %q: %w", step.Label(), err)
+		}
+
+		if rendered.IsGroup() {
+			if err := p.runGroup(ctx, rendered); err != nil {
 				return err
 			}
-		} else if step.IsAction() {
-			if err := p.runAction(ctx, step); err != nil {
-				onError := step.ResolvedOnError(p.Defaults)
+		} else if rendered.IsAction() {
+			if err := p.runAction(ctx, rendered); err != nil {
+				onError := rendered.ResolvedOnError(p.Defaults)
 				if onError == "continue" {
-					p.Logger.Warn("action failed, continuing", "action", step.Action, "error", err)
+					p.Logger.Warn("action failed, continuing", "action", rendered.Action, "error", err)
 					continue
 				}
-				return fmt.Errorf("action %q failed: %w", step.Action, err)
+				return fmt.Errorf("action %q failed: %w", rendered.Action, err)
 			}
 		} else {
-			onError := step.ResolvedOnError(p.Defaults)
-			if err := p.runStepWithLoop(ctx, step); err != nil {
+			onError := rendered.ResolvedOnError(p.Defaults)
+			result, runErr := p.runStepWithLoop(ctx, rendered)
+			if runErr != nil {
 				if onError == "continue" {
-					p.Logger.Warn("agent failed, continuing", "agent", step.Name, "error", err)
+					p.Logger.Warn("agent failed, continuing", "agent", rendered.Name, "error", runErr)
 					continue
 				}
-				return fmt.Errorf("agent %q failed: %w", step.Name, err)
+				return fmt.Errorf("agent %q failed: %w", rendered.Name, runErr)
+			}
+
+			// Store captured output for use by subsequent steps
+			if step.CaptureOutput && result != nil && result.Output != "" {
+				p.storeStepOutput(step.Name, result)
 			}
 		}
 	}
 	return nil
+}
+
+// renderStep renders a step with current pipeline data, if data is available.
+func (p *Pipeline) renderStep(step config.StepConfig) (config.StepConfig, error) {
+	if p.Data == nil {
+		return step, nil
+	}
+	return tmpl.RenderStep(step, p.Data)
+}
+
+// storeStepOutput saves a step's captured output into p.Data for template access.
+func (p *Pipeline) storeStepOutput(name string, result *runner.Result) {
+	if p.Data == nil {
+		p.Data = make(map[string]interface{})
+	}
+
+	stepsData, _ := p.Data["steps"].(map[string]interface{})
+	if stepsData == nil {
+		stepsData = make(map[string]interface{})
+		p.Data["steps"] = stepsData
+	}
+
+	stepsData[name] = map[string]interface{}{
+		"output":    result.Output,
+		"exit_code": fmt.Sprintf("%d", result.ExitCode),
+	}
 }
 
 func (p *Pipeline) runAction(ctx context.Context, step config.StepConfig) error {
@@ -137,7 +182,7 @@ func (p *Pipeline) runGroup(ctx context.Context, group config.StepConfig) error 
 	return nil
 }
 
-func (p *Pipeline) runStepWithLoop(ctx context.Context, step config.StepConfig) error {
+func (p *Pipeline) runStepWithLoop(ctx context.Context, step config.StepConfig) (*runner.Result, error) {
 	stepCount := step.Loop.Count
 	if stepCount == 0 {
 		return p.runAgent(ctx, step)
@@ -145,30 +190,33 @@ func (p *Pipeline) runStepWithLoop(ctx context.Context, step config.StepConfig) 
 
 	stepDelay := config.ParseDuration(step.Loop.Delay, 0)
 
+	var lastResult *runner.Result
 	for i := 1; i <= stepCount; i++ {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return nil, ctx.Err()
 		}
 
 		p.Logger.Info("step loop", "agent", step.Name, "step_iteration", i, "of", stepCount)
 
-		if err := p.runAgent(ctx, step); err != nil {
-			return err
+		result, err := p.runAgent(ctx, step)
+		if err != nil {
+			return result, err
 		}
+		lastResult = result
 
 		if stepDelay > 0 && i < stepCount {
 			select {
 			case <-time.After(stepDelay):
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			}
 		}
 	}
 
-	return nil
+	return lastResult, nil
 }
 
-func (p *Pipeline) runAgent(ctx context.Context, step config.StepConfig) error {
+func (p *Pipeline) runAgent(ctx context.Context, step config.StepConfig) (*runner.Result, error) {
 	onError := step.ResolvedOnError(p.Defaults)
 
 	retries := 1
@@ -181,9 +229,10 @@ func (p *Pipeline) runAgent(ctx context.Context, step config.StepConfig) error {
 	cmd, args := step.ResolvedCommand(p.Defaults)
 
 	var lastErr error
+	var lastResult runner.Result
 	for attempt := 1; attempt <= retries; attempt++ {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return nil, ctx.Err()
 		}
 
 		if attempt > 1 {
@@ -191,21 +240,22 @@ func (p *Pipeline) runAgent(ctx context.Context, step config.StepConfig) error {
 			select {
 			case <-time.After(retryDelay):
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil, ctx.Err()
 			}
 		} else {
 			p.Logger.Info("running agent", "agent", step.Name, "command", cmd, "args", args)
 		}
 
 		result := runner.Run(ctx, step, p.Defaults, p.Logger)
+		lastResult = result
 		if result.Err == nil {
 			p.Logger.Info("agent completed", "agent", step.Name, "duration", result.Duration.Round(time.Millisecond))
-			return nil
+			return &lastResult, nil
 		}
 
 		lastErr = result.Err
 		p.Logger.Error("agent failed", "agent", step.Name, "error", result.Err, "exit_code", result.ExitCode, "duration", result.Duration.Round(time.Millisecond))
 	}
 
-	return lastErr
+	return &lastResult, lastErr
 }
