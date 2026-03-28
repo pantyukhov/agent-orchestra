@@ -137,9 +137,7 @@ steps:
         prompt: "Review changes and fix issues"
 ```
 
-Groups can be nested.
-
-See [example/example.yaml](example/example.yaml) for all features.
+Groups can be nested. All pipeline features (loops, groups, retries, defaults) also work inside orchestrator pipelines.
 
 ## Orchestrator mode
 
@@ -280,8 +278,7 @@ internal/
   state/                 - JSON file persistence, locks, dedup
   tmpl/                  - Go template rendering
 example/
-  example.yaml           - Pipeline mode showcase
-  orchestrator.yaml      - Orchestrator mode showcase
+  orchestrator.yaml      - Full orchestrator config example
 ```
 
 ## License
