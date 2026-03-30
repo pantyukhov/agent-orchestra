@@ -1,37 +1,63 @@
+<div align="center">
+
 # agent-orchestra
 
-A CLI tool for orchestrating AI agents (Claude Code, etc.) and shell commands. Two modes:
+**Orchestrate AI agents and shell commands with YAML-driven pipelines**
 
-- **Pipeline mode** — run steps sequentially from a YAML config with loops, groups, and retries
-- **Orchestrator mode** — event-driven loop that polls GitLab for issues/CI failures, runs pipelines with templated variables, manages state via labels
+[![CI](https://github.com/pantyukhov/agent-orchestra/actions/workflows/ci.yml/badge.svg)](https://github.com/pantyukhov/agent-orchestra/actions/workflows/ci.yml)
+[![Release](https://github.com/pantyukhov/agent-orchestra/actions/workflows/release.yml/badge.svg)](https://github.com/pantyukhov/agent-orchestra/releases)
+[![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Installation
+[Quick Start](#quick-start) &bull; [Pipeline Mode](#pipeline-mode) &bull; [Orchestrator Mode](#orchestrator-mode) &bull; [Configuration](#configuration-reference)
 
-### From GitHub Releases (Linux / macOS)
+</div>
 
-Download the latest binary from [Releases](https://github.com/pantyukhov/agent-orchestra/releases):
+---
+
+agent-orchestra is a lightweight CLI tool that chains AI agents (Claude Code, etc.) and shell commands into repeatable workflows. Define your steps in YAML — loops, retries, groups, and error handling come built-in.
+
+Two modes of operation:
+
+- **Pipeline** — run steps sequentially from a YAML config
+- **Orchestrator** — event-driven loop that polls GitLab, processes events through pipelines, and manages state via issue labels
+
+## Features
+
+- **YAML-driven pipelines** with loops, groups, retries, and error handling
+- **Orchestrator mode** with GitLab integration (issues + CI failures)
+- **Template engine** — inject event data into prompts and actions via `{{ .key }}` syntax
+- **Step output capture** — pass stdout between steps
+- **State machine** — automatic label transitions (`ai:todo` → `ai:in-progress` → `ai:done`)
+- **Built-in actions** — git operations, GitLab comments, issue management
+- **Concurrency control** with deduplication and per-task logging
+- **Minimal dependencies** — single binary, only `gopkg.in/yaml.v3`
+
+## Quick Start
+
+### Install
+
+**From releases** (recommended):
 
 ```bash
-# macOS arm64 (Apple Silicon)
+# macOS (Apple Silicon)
 curl -L https://github.com/pantyukhov/agent-orchestra/releases/latest/download/agent-orchestra_darwin_arm64.tar.gz | tar xz
 sudo mv agent-orchestra /usr/local/bin/
 
-# macOS amd64 (Intel)
+# macOS (Intel)
 curl -L https://github.com/pantyukhov/agent-orchestra/releases/latest/download/agent-orchestra_darwin_amd64.tar.gz | tar xz
 sudo mv agent-orchestra /usr/local/bin/
 
-# Linux amd64
+# Linux (amd64)
 curl -L https://github.com/pantyukhov/agent-orchestra/releases/latest/download/agent-orchestra_linux_amd64.tar.gz | tar xz
 sudo mv agent-orchestra /usr/local/bin/
 
-# Linux arm64
+# Linux (arm64)
 curl -L https://github.com/pantyukhov/agent-orchestra/releases/latest/download/agent-orchestra_linux_arm64.tar.gz | tar xz
 sudo mv agent-orchestra /usr/local/bin/
 ```
 
-### From source
-
-Requires Go 1.22+.
+**From source** (requires Go 1.22+):
 
 ```bash
 go install github.com/pavelpantiukhov/agent-orchestra/cmd/agent-orchestra@latest
@@ -46,66 +72,58 @@ make build
 make install
 ```
 
-## CLI flags
+### Run your first pipeline
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `-config` | `pipeline.yaml` | Path to YAML config file |
-| `-version` | | Show version and exit |
-| `-once` | | Single poll, no loop (orchestrator mode) |
-
-## Pipeline mode
-
-Run a sequence of steps with loops, groups, retries, and a shared default command.
-
-```bash
-agent-orchestra -config pipeline.yaml
-```
-
-### Minimal example
+Create `pipeline.yaml`:
 
 ```yaml
 pipeline:
-  name: "my-pipeline"
+  name: "hello-world"
 
   defaults:
     command: "claude"
     args: ["--dangerously-skip-permissions", "-p"]
     timeout: "10m"
 
-  loop:
-    count: 1
-
   steps:
     - name: "analyze"
-      prompt: "Analyze the project structure"
+      prompt: "Analyze the project structure and summarize it"
 
     - name: "build"
       command: "make"
       args: ["build"]
 ```
 
-### Step options
+```bash
+agent-orchestra -config pipeline.yaml
+```
+
+## Pipeline Mode
+
+Run a sequence of steps with loops, groups, retries, and shared defaults.
+
+### Step Options
 
 | Field | Description |
 |-------|-------------|
 | `name` | Step identifier |
 | `command` | Executable (overrides `defaults.command`) |
 | `args` | Arguments (overrides `defaults.args`) |
-| `prompt` | Appended to args as last argument |
+| `prompt` | Appended to args as the last argument |
 | `timeout` | Max duration (`5m`, `1h`) |
-| `working_dir` | Working directory |
+| `working_dir` | Working directory for this step |
 | `env` | Environment variables (merged with `defaults.env`) |
 | `on_error` | `stop` (default), `continue`, or `retry` |
-| `retry_count` | Retries when `on_error: retry` |
+| `retry_count` | Number of retries when `on_error: retry` |
 | `retry_delay` | Delay between retries |
+| `capture_output` | Capture stdout for use by later steps |
 | `loop.count` | Repeat this step N times |
 | `loop.delay` | Delay between repetitions |
 
-### Multi-line prompts
+### Multi-line Prompts
 
 ```yaml
-# Preserves newlines
+# Preserves newlines (literal block)
 - name: "review"
   prompt: |
     Review the code.
@@ -122,7 +140,7 @@ pipeline:
 
 ### Groups
 
-Group steps into a repeatable unit:
+Group steps into repeatable units with their own loop and error handling:
 
 ```yaml
 steps:
@@ -137,28 +155,151 @@ steps:
         prompt: "Review changes and fix issues"
 ```
 
-Groups can be nested. All pipeline features (loops, groups, retries, defaults) also work inside orchestrator pipelines.
+Groups can be nested. All pipeline features (loops, retries, defaults) work inside groups.
 
-## Orchestrator mode
+### Output Passing
 
-Event-driven loop that polls GitLab, processes events through pipelines, and manages state via issue labels.
+Capture a step's stdout and use it in subsequent steps:
+
+```yaml
+steps:
+  - name: "analyze"
+    prompt: "List all TODO comments in the codebase"
+    capture_output: true
+
+  - name: "fix"
+    prompt: |
+      Fix these TODOs:
+      {{ stepOutput .steps "analyze" }}
+```
+
+## Orchestrator Mode
+
+Event-driven loop that polls GitLab for issues and CI failures, runs pipelines with templated variables, and manages state transitions via labels.
 
 ```bash
-# Continuous poll loop
+# Continuous polling
 GITLAB_TOKEN=glpat-xxx agent-orchestra -config orchestrator.yaml
 
-# Single poll
+# Single poll (useful for cron jobs)
 GITLAB_TOKEN=glpat-xxx agent-orchestra -config orchestrator.yaml --once
 ```
 
-### Environment variables
+### How It Works
+
+```
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐
+│   Triggers   │────▸│ Priority Queue│────▸│  Orchestrator  │
+│ (GitLab API) │     │  (by priority)│     │                │
+└─────────────┘     └──────────────┘     │  1. Lock event  │
+                                          │  2. on_start    │
+                                          │  3. Run pipeline│
+                                          │  4. on_success/ │
+                                          │     on_failure  │
+                                          │  5. Unlock      │
+                                          └───────────────┘
+```
+
+### Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `GITLAB_TOKEN` | Yes | GitLab API token |
 | `GITLAB_URL` | No | GitLab base URL (default: `https://gitlab.com`) |
 
-### Config structure
+### Triggers
+
+| Type | Description | Required gitlab fields |
+|------|-------------|----------------------|
+| `gitlab-issues` | Poll issues by label | `project`, `labels` |
+| `gitlab-ci` | Watch MR pipelines for failures | `project`, `username`, `watch_jobs` |
+
+### Template Variables
+
+Templates use Go's `{{ .key }}` syntax. Available variables depend on the trigger type:
+
+<details>
+<summary><strong>gitlab-issues</strong></summary>
+
+| Variable | Description |
+|----------|-------------|
+| `{{ .issue_iid }}` | GitLab issue IID |
+| `{{ .issue_title }}` | Issue title |
+| `{{ .issue_url }}` | Issue web URL |
+| `{{ .jira_id }}` | Jira ID extracted from title (e.g., `AS-123`) |
+| `{{ .project }}` | GitLab project path |
+| `{{ .labels }}` | Comma-separated labels |
+
+</details>
+
+<details>
+<summary><strong>gitlab-ci</strong></summary>
+
+| Variable | Description |
+|----------|-------------|
+| `{{ .mr_iid }}` | Merge request IID |
+| `{{ .mr_title }}` | MR title |
+| `{{ .mr_branch }}` | Source branch |
+| `{{ .mr_url }}` | MR web URL |
+| `{{ .pipeline_id }}` | Failed pipeline ID |
+| `{{ .failed_jobs }}` | Comma-separated failed job names |
+| `{{ .jira_id }}` | Jira ID from branch/title |
+| `{{ .project }}` | GitLab project path |
+
+</details>
+
+### Built-in Actions
+
+| Action | Fields | Description |
+|--------|--------|-------------|
+| `git-save` | `message` | Stage and commit uncommitted changes |
+| `git-checkout` | `branch`, `create_from` | Checkout or create a branch |
+| `gitlab-comment` | `issue`, `body` | Add a comment to a GitLab issue |
+| `gitlab-close-issue` | `issue` | Close a GitLab issue |
+
+### State Machine
+
+Each pipeline defines label transitions for `on_start`, `on_success`, `on_failure`, and `on_needs_human`:
+
+```yaml
+state:
+  on_start:
+    remove_labels: ["ai:todo"]
+    add_labels: ["ai:in-progress"]
+  on_success:
+    remove_labels: ["ai:in-progress"]
+    add_labels: ["ai:done"]
+    close_issue: true
+  on_failure:
+    remove_labels: ["ai:in-progress"]
+    add_labels: ["ai:failed"]
+  on_needs_human:
+    remove_labels: ["ai:in-progress"]
+    add_labels: ["ai:needs-review"]
+```
+
+**Label lifecycle:**
+
+```
+New task:        ai:todo  ──▸  ai:in-progress  ──▸  ai:done
+Human answered:  ai:answered  ──▸  ai:in-progress  ──▸  ai:done
+CI failure:      (detected)  ──▸  ai:in-progress  ──▸  ai:done
+Needs human:     ai:in-progress  ──▸  ai:needs-review
+```
+
+## Configuration Reference
+
+### CLI Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-config` | `pipeline.yaml` | Path to YAML config file |
+| `-version` | | Show version and exit |
+| `-once` | | Single poll, no loop (orchestrator mode) |
+
+### Full Orchestrator Example
+
+See [`example/orchestrator.yaml`](example/orchestrator.yaml) for a complete configuration with multiple triggers and pipelines.
 
 ```yaml
 orchestrator:
@@ -185,7 +326,6 @@ orchestrator:
       type: "gitlab-issues"
       gitlab:
         project: "mygroup/myproject"
-        url: "https://gitlab.example.com"
         labels: ["ai:todo"]
       poll_interval: "2m"
       priority: 3
@@ -209,76 +349,38 @@ orchestrator:
           branch: "feat/{{ .jira_id }}"
           create_from: "origin/master"
         - name: "implement"
-          prompt: "/issues-worder {{ .jira_id }}"
+          prompt: "Implement task {{ .jira_id }}: {{ .issue_title }}"
+        - action: "gitlab-comment"
+          issue: "{{ .issue_iid }}"
+          body: "AI completed work on {{ .jira_id }}"
 ```
 
-### Triggers
-
-| Type | Description | Required gitlab fields |
-|------|-------------|----------------------|
-| `gitlab-issues` | Polls issues by label | `project`, `labels` |
-| `gitlab-ci` | Watches MR pipelines for failures | `project`, `username`, `watch_jobs` |
-
-### Template variables
-
-Templates use `{{ .key }}` syntax. Available variables depend on trigger type:
-
-**gitlab-issues:**
-`issue_iid`, `issue_title`, `issue_url`, `jira_id`, `project`, `labels`
-
-**gitlab-ci:**
-`mr_iid`, `mr_title`, `mr_branch`, `mr_url`, `pipeline_id`, `failed_jobs`, `jira_id`, `project`
-
-### Built-in actions
-
-| Action | Fields | Description |
-|--------|--------|-------------|
-| `git-save` | `message` | Stage and commit uncommitted changes |
-| `git-checkout` | `branch`, `create_from` | Checkout or create a branch |
-| `gitlab-comment` | `issue`, `body` | Add a comment to a GitLab issue |
-| `gitlab-close-issue` | `issue` | Close a GitLab issue |
-
-### State machine
-
-Each pipeline defines label transitions for `on_start`, `on_success`, `on_failure`:
-
-```yaml
-state:
-  on_start:
-    remove_labels: ["ai:todo"]
-    add_labels: ["ai:in-progress"]
-  on_success:
-    remove_labels: ["ai:in-progress"]
-    add_labels: ["ai:done"]
-    close_issue: true
-```
-
-### Label lifecycle
+## Project Structure
 
 ```
-New task:     ai:todo → ai:in-progress → ai:done (or ai:failed)
-Answered:     ai:answered → ai:in-progress → ai:done
-CI fix:       (detected) → ai:in-progress → ai:done
-```
-
-See [example/orchestrator.yaml](example/orchestrator.yaml) for a full example.
-
-## Project structure
-
-```
-cmd/agent-orchestra/     - CLI entrypoint
+cmd/agent-orchestra/       CLI entrypoint
 internal/
-  config/                - YAML config types (pipeline + orchestrator)
-  pipeline/              - Sequential step execution with loops/groups
-  runner/                - Shell command runner (timeout, env, working_dir)
-  trigger/               - Trigger interface + GitLab API client
-  action/                - Built-in actions (git, gitlab)
-  orchestrator/          - Event loop: poll → prioritize → run → transition
-  event/                 - Event type + priority queue
-  state/                 - JSON file persistence, locks, dedup
-  tmpl/                  - Go template rendering
+  config/                  YAML config types and validation
+  pipeline/                Step execution with loops, groups, retries
+  runner/                  Shell command runner (timeout, env, working_dir)
+  orchestrator/            Event loop: poll → prioritize → run → transition
+  trigger/                 Trigger interface + GitLab API client
+  action/                  Built-in actions (git, gitlab)
+  event/                   Event type + priority queue
+  state/                   JSON file persistence, locks, dedup
+  tmpl/                    Go template rendering
 example/
-  orchestrator.yaml      - Full orchestrator config example
+  orchestrator.yaml        Full orchestrator config example
+```
+
+## Contributing
+
+```bash
+git clone https://github.com/pantyukhov/agent-orchestra.git
+cd agent-orchestra
+make build    # build binary
+make test     # run tests with race detector
+make install  # install to $GOPATH/bin
 ```
 
 ## License
