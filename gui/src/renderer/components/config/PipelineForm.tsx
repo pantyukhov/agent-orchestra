@@ -76,6 +76,13 @@ export function PipelineForm({ name, pipeline, onChange, onRemove, onRename }: P
     onChange(name, { ...pipeline, steps: pipeline.steps.filter((_, i) => i !== index) })
   }
 
+  const moveStep = (from: number, to: number) => {
+    const steps = [...pipeline.steps]
+    const [item] = steps.splice(from, 1)
+    steps.splice(to, 0, item)
+    onChange(name, { ...pipeline, steps })
+  }
+
   const addStep = (type: 'agent' | 'action') => {
     const newStep: StepConfig =
       type === 'action'
@@ -155,7 +162,7 @@ export function PipelineForm({ name, pipeline, onChange, onRemove, onRename }: P
           </div>
           <div className="space-y-3">
             {pipeline.steps.map((step, i) => (
-              <StepForm key={i} step={step} index={i} onChange={updateStep} onRemove={removeStep} />
+              <StepForm key={i} step={step} index={i} total={pipeline.steps.length} onChange={updateStep} onRemove={removeStep} onMove={moveStep} />
             ))}
           </div>
         </CardContent>

@@ -5,17 +5,19 @@ import { Textarea } from '../ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Switch } from '../ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Trash2, GripVertical } from 'lucide-react'
+import { Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import type { StepConfig } from '../../types/config'
 
 interface StepFormProps {
   step: StepConfig
   index: number
+  total?: number
   onChange: (index: number, step: StepConfig) => void
   onRemove: (index: number) => void
+  onMove?: (from: number, to: number) => void
 }
 
-export function StepForm({ step, index, onChange, onRemove }: StepFormProps) {
+export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }: StepFormProps) {
   const update = (patch: Partial<StepConfig>) => {
     onChange(index, { ...step, ...patch })
   }
@@ -25,9 +27,19 @@ export function StepForm({ step, index, onChange, onRemove }: StepFormProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-3 flex flex-row items-center gap-2">
-        <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-        <CardTitle className="text-sm flex-1">
+      <CardHeader className="pb-3 flex flex-row items-center gap-1">
+        {onMove && (
+          <div className="flex flex-col -my-1">
+            <Button variant="ghost" size="icon" className="h-5 w-5" disabled={index === 0} onClick={() => onMove(index, index - 1)}>
+              <ChevronUp className="h-3 w-3" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-5 w-5" disabled={index >= total - 1} onClick={() => onMove(index, index + 1)}>
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+        <CardTitle className="text-sm flex-1 ml-1">
+          <span className="text-muted-foreground text-xs mr-1">{index + 1}.</span>
           {step.action ? `Action: ${step.action}` : step.group ? `Group: ${step.group}` : step.name || `Step ${index + 1}`}
         </CardTitle>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onRemove(index)}>

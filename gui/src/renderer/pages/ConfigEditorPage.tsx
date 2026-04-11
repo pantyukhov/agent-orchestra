@@ -96,6 +96,9 @@ export function ConfigEditorPage() {
                     <CardTitle className="text-sm font-mono flex-1">
                       {p.replace(workspacePath + '/', '')}
                     </CardTitle>
+                    <Badge variant="outline" className="text-[10px] shrink-0">
+                      {p.includes('orchestrat') ? 'orch' : 'pipe'}
+                    </Badge>
                   </CardHeader>
                 </Card>
               ))
@@ -233,6 +236,13 @@ function PipelineEditor({
     updatePipe({ steps: [...pipe.steps, newStep] })
   }
 
+  const moveStep = (from: number, to: number) => {
+    const steps = [...pipe.steps]
+    const [item] = steps.splice(from, 1)
+    steps.splice(to, 0, item)
+    updatePipe({ steps })
+  }
+
   return (
     <ScrollArea className="flex-1">
       <div className="p-6 space-y-6 max-w-3xl">
@@ -346,7 +356,7 @@ function PipelineEditor({
           </div>
           <div className="space-y-3">
             {pipe.steps.map((step, i) => (
-              <StepForm key={i} step={step} index={i} onChange={updateStep} onRemove={removeStep} />
+              <StepForm key={i} step={step} index={i} total={pipe.steps.length} onChange={updateStep} onRemove={removeStep} onMove={moveStep} />
             ))}
           </div>
         </section>
