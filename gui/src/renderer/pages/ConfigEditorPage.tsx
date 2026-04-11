@@ -109,10 +109,10 @@ export function ConfigEditorPage() {
     )
   }
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaveStatus('saving')
     try {
-      await window.electronAPI.saveConfigFile(configPath, config)
+      await window.electronAPI.saveConfigFile(configPath, config!)
       setDirty(false)
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2000)
@@ -120,7 +120,7 @@ export function ConfigEditorPage() {
       setSaveStatus('error')
       setTimeout(() => setSaveStatus('idle'), 3000)
     }
-  }
+  }, [configPath, config, setDirty])
 
   const handleBack = () => {
     if (dirty && !window.confirm('You have unsaved changes. Discard?')) return
@@ -132,17 +132,16 @@ export function ConfigEditorPage() {
   }
 
   // Cmd+S / Ctrl+S to save
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-      e.preventDefault()
-      if (dirty) handleSave()
-    }
-  }, [dirty, handleSave])
-
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (dirty) handleSave()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [dirty, handleSave])
 
   const toolbar = (
     <div className="flex items-center gap-2 border-b px-4 py-2">
