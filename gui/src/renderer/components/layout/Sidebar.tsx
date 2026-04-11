@@ -15,8 +15,7 @@ export function Sidebar() {
   const { page, setPage, processStatus, dirty } = useStore()
 
   return (
-    <div className="flex h-full w-14 flex-col items-center border-r bg-muted/40 py-4 gap-2">
-      <div className="drag-region h-6 w-full" />
+    <div className="flex h-full w-14 flex-col items-center border-r bg-muted/40 pt-12 pb-4 gap-2">
       {nav.map((item) => (
         <Button
           key={item.id}
