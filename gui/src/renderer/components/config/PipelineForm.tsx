@@ -1,0 +1,165 @@
+import { Input } from '../ui/input'
+import { Label } from '../ui/label'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { Separator } from '../ui/separator'
+import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
+import { StepForm } from './StepForm'
+import type { PipelineDef, StepConfig, StateTransition } from '../../types/config'
+
+interface PipelineFormProps {
+  name: string
+  pipeline: PipelineDef
+  onChange: (name: string, pipeline: PipelineDef) => void
+  onRemove: (name: string) => void
+  onRename: (oldName: string, newName: string) => void
+}
+
+function TransitionFields({
+  label,
+  transition,
+  onChange
+}: {
+  label: string
+  transition?: StateTransition
+  onChange: (t: StateTransition) => void
+}) {
+  const t = transition || {}
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Remove Labels</Label>
+          <Input
+            className="h-8 text-xs"
+            value={(t.remove_labels || []).join(', ')}
+            onChange={(e) =>
+              onChange({ ...t, remove_labels: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Add Labels</Label>
+          <Input
+            className="h-8 text-xs"
+            value={(t.add_labels || []).join(', ')}
+            onChange={(e) =>
+              onChange({ ...t, add_labels: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
+            }
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function PipelineForm({ name, pipeline, onChange, onRemove, onRename }: PipelineFormProps) {
+  const [expanded, setExpanded] = useState(true)
+  const [editName, setEditName] = useState(name)
+
+  const updateState = (key: string, transition: StateTransition) => {
+    onChange(name, {
+      ...pipeline,
+      state: { ...pipeline.state, [key]: transition }
+    })
+  }
+
+  const updateStep = (index: number, step: StepConfig) => {
+    const steps = [...pipeline.steps]
+    steps[index] = step
+    onChange(name, { ...pipeline, steps })
+  }
+
+  const removeStep = (index: number) => {
+    onChange(name, { ...pipeline, steps: pipeline.steps.filter((_, i) => i !== index) })
+  }
+
+  const addStep = (type: 'agent' | 'action') => {
+    const newStep: StepConfig =
+      type === 'action'
+        ? { action: 'git-save' }
+        : { name: `step-${pipeline.steps.length + 1}`, prompt: '' }
+    onChange(name, { ...pipeline, steps: [...pipeline.steps, newStep] })
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex flex-row items-center gap-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
+        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        <CardTitle className="text-base flex-1">{name}</CardTitle>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(name)
+          }}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </CardHeader>
+
+      {expanded && (
+        <CardContent className="space-y-4">
+          <div className="space-y-1">
+            <Label>Pipeline Name</Label>
+            <div className="flex gap-2">
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+              {editName !== name && (
+                <Button size="sm" onClick={() => { onRename(name, editName) }}>
+                  Rename
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>Stop Labels (comma-separated)</Label>
+            <Input
+              value={(pipeline.stop_labels || []).join(', ')}
+              onChange={(e) =>
+                onChange(name, {
+                  ...pipeline,
+                  stop_labels: e.target.value.split(',').map((s) => s.trim()).filter(Boolean)
+                })
+              }
+            />
+          </div>
+
+          <Separator />
+          <p className="text-sm font-medium">State Transitions</p>
+          <div className="space-y-3">
+            <TransitionFields label="On Start" transition={pipeline.state?.on_start} onChange={(t) => updateState('on_start', t)} />
+            <TransitionFields label="On Success" transition={pipeline.state?.on_success} onChange={(t) => updateState('on_success', t)} />
+            <TransitionFields label="On Failure" transition={pipeline.state?.on_failure} onChange={(t) => updateState('on_failure', t)} />
+            <TransitionFields label="On Needs Human" transition={pipeline.state?.on_needs_human} onChange={(t) => updateState('on_needs_human', t)} />
+          </div>
+
+          <Separator />
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">Steps ({pipeline.steps.length})</p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => addStep('agent')}>
+                <Plus className="h-3 w-3 mr-1" /> Agent Step
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => addStep('action')}>
+                <Plus className="h-3 w-3 mr-1" /> Action
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {pipeline.steps.map((step, i) => (
+              <StepForm key={i} step={step} index={i} onChange={updateStep} onRemove={removeStep} />
+            ))}
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  )
+}

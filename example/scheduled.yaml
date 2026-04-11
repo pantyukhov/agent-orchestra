@@ -1,0 +1,112 @@
+# Example: Scheduled task execution (every 4 hours)
+#
+# This example shows how to run AI tasks on a schedule using poll_interval.
+# The orchestrator continuously polls GitLab for issues with matching labels
+# and processes them through the configured pipeline.
+#
+# Usage (continuous — polls every 4 hours):
+#   GITLAB_TOKEN=glpat-xxx agent-orchestra -config example/scheduled.yaml
+#
+# Usage (single run via cron):
+#   # crontab -e
+#   0 */4 * * * GITLAB_TOKEN=glpat-xxx agent-orchestra -config scheduled.yaml --once
+
+orchestrator:
+  name: "scheduled-tasks"
+  project_root: "."
+
+  defaults:
+    command: "claude"
+    args: ["--dangerously-skip-permissions", "-p"]
+    timeout: "1h"
+
+  concurrency:
+    max: 1
+
+  logging:
+    dir: "./logs"
+    per_task: true
+
+  persistence:
+    file: ".scheduled.state.json"
+
+  # ── Triggers ────────────────────────────────────────────────────────
+  triggers:
+    # Poll every 4 hours for issues labeled "ai:scheduled"
+    - name: "scheduled-review"
+      type: "gitlab-issues"
+      gitlab:
+        project: "mygroup/myproject"
+        labels: ["ai:scheduled"]
+      poll_interval: "4h"
+      priority: 1
+      pipeline: "scheduled-review"
+
+    # Poll every 4 hours for issues labeled "ai:report"
+    - name: "scheduled-report"
+      type: "gitlab-issues"
+      gitlab:
+        project: "mygroup/myproject"
+        labels: ["ai:report"]
+      poll_interval: "4h"
+      priority: 2
+      pipeline: "scheduled-report"
+
+  # ── Pipelines ───────────────────────────────────────────────────────
+  pipelines:
+    # Code review pipeline — picks up issues requesting periodic review
+    scheduled-review:
+      state:
+        on_start:
+          remove_labels: ["ai:scheduled"]
+          add_labels: ["ai:in-progress"]
+        on_success:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:done"]
+        on_failure:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:failed"]
+      steps:
+        - action: "git-checkout"
+          branch: "feat/{{ .jira_id }}"
+          create_from: "origin/master"
+
+        - name: "review"
+          prompt: |
+            Review the codebase for issue {{ .issue_iid }}: {{ .issue_title }}.
+            Focus on code quality, potential bugs, and security issues.
+            Summarize findings.
+          timeout: "30m"
+
+        - action: "gitlab-comment"
+          issue: "{{ .issue_iid }}"
+          body: |
+            Scheduled review completed for {{ .jira_id }}.
+            {{ stepOutput .steps "review" }}
+
+    # Report pipeline — generates periodic project reports
+    scheduled-report:
+      state:
+        on_start:
+          remove_labels: ["ai:report"]
+          add_labels: ["ai:in-progress"]
+        on_success:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:done"]
+          close_issue: true
+        on_failure:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:failed"]
+      steps:
+        - name: "generate-report"
+          prompt: |
+            Generate a project status report for {{ .issue_title }}.
+            Include: recent commits, open MRs, test coverage trends,
+            and any code health concerns.
+          timeout: "20m"
+
+        - action: "gitlab-comment"
+          issue: "{{ .issue_iid }}"
+          body: |
+            📊 Report generated:
+            {{ stepOutput .steps "generate-report" }}

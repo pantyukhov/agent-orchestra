@@ -1,0 +1,24 @@
+# Go
+/agent-orchestra
+*.exe
+
+# State & logs (runtime artifacts)
+.agent-orchestra.state.json
+*.state.json
+logs/
+
+# GUI
+gui/node_modules/
+gui/out/
+gui/dist/
+gui/release/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

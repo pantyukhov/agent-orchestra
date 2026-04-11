@@ -1,0 +1,15 @@
+appId: com.agent-orchestra.gui
+productName: Agent Orchestra
+directories:
+  buildResources: build
+  output: release
+files:
+  - dist/**/*
+mac:
+  target:
+    - dmg
+  artifactName: ${name}-${version}-${arch}.${ext}
+linux:
+  target:
+    - AppImage
+  artifactName: ${name}-${version}-${arch}.${ext}
