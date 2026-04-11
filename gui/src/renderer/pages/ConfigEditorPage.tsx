@@ -48,6 +48,21 @@ export function ConfigEditorPage() {
     }
   }
 
+  const handleNewConfig = async (mode: 'pipeline' | 'orchestrator') => {
+    const configsDir = workspacePath + '/configs'
+    try {
+      const path = await window.electronAPI.createNewConfig(configsDir, mode)
+      // Refresh config list
+      const configs = await window.electronAPI.getWorkspaceConfigs(workspacePath)
+      useStore.getState().setWorkspace(workspacePath, configs)
+      // Open the new config
+      const content = await window.electronAPI.loadConfigFile(path)
+      setConfig(path, content)
+    } catch (e) {
+      console.error('Failed to create config:', e)
+    }
+  }
+
   // Config list view
   if (!config || !configPath) {
     return (
@@ -56,11 +71,19 @@ export function ConfigEditorPage() {
           <span className="text-sm font-medium">Configs</span>
           <span className="text-xs text-muted-foreground font-mono flex-1 truncate">{workspacePath}</span>
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleNewConfig('pipeline')}>
+              <Plus className="h-3 w-3 mr-1" /> Pipeline
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleNewConfig('orchestrator')}>
+              <Plus className="h-3 w-3 mr-1" /> Orchestrator
+            </Button>
+          </div>
         </div>
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-2 max-w-xl">
             {workspaceConfigs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No YAML configs found in workspace</p>
+              <p className="text-sm text-muted-foreground">No YAML configs found in workspace. Create one above.</p>
             ) : (
               workspaceConfigs.map((p) => (
                 <Card
