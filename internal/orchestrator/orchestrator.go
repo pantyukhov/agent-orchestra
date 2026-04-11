@@ -13,6 +13,7 @@ import (
 	"github.com/pavelpantiukhov/agent-orchestra/internal/action"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/config"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/event"
+	"github.com/pavelpantiukhov/agent-orchestra/internal/history"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/pipeline"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/state"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/tmpl"
@@ -26,6 +27,7 @@ type Orchestrator struct {
 	Actions  *action.Runner
 	GitLab   *trigger.GitLabClient
 	Logger   *slog.Logger
+	History  *history.Store
 }
 
 func New(cfg *config.OrchestratorConfig, logger *slog.Logger) *Orchestrator {
@@ -67,6 +69,10 @@ func New(cfg *config.OrchestratorConfig, logger *slog.Logger) *Orchestrator {
 		}
 	}
 
+	// History store — stored alongside the state file
+	historyDir := filepath.Join(filepath.Dir(statePath), ".history")
+	hist := history.NewStore(historyDir)
+
 	return &Orchestrator{
 		Config:   cfg,
 		State:    st,
@@ -74,6 +80,7 @@ func New(cfg *config.OrchestratorConfig, logger *slog.Logger) *Orchestrator {
 		Actions:  actionsRunner,
 		GitLab:   gitlabClient,
 		Logger:   logger,
+		History:  hist,
 	}
 }
 
@@ -202,6 +209,7 @@ func (o *Orchestrator) processEvent(ctx context.Context, ev event.Event) {
 		GitLab:     o.GitLab,
 		Project:    ev.Data["project"],
 		IssueIID:   ev.Data["issue_iid"],
+		History:    o.History,
 	}
 
 	if err := p.Run(ctx); err != nil {

@@ -1,4 +1,4 @@
-import { Settings, Play, FileText, Home } from 'lucide-react'
+import { Settings, Play, FileText, Home, History } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
@@ -8,6 +8,7 @@ const nav = [
   { id: 'welcome' as const, label: 'Home', icon: Home },
   { id: 'config' as const, label: 'Config', icon: Settings },
   { id: 'execution' as const, label: 'Run', icon: Play },
+  { id: 'history' as const, label: 'History', icon: History },
   { id: 'logs' as const, label: 'Logs', icon: FileText }
 ]
 

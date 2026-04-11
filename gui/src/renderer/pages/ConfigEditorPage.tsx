@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Save, Plus, FolderOpen } from 'lucide-react'
+import { Save, Plus, FileText } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -10,15 +10,57 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { TriggerForm } from '../components/config/TriggerForm'
 import { PipelineForm } from '../components/config/PipelineForm'
 import { useStore } from '../hooks/use-store'
+import { cn } from '../lib/utils'
 import type { Config, OrchestratorConfig, TriggerConfig, PipelineDef } from '../types/config'
 
 export function ConfigEditorPage() {
-  const { config, configPath, dirty, updateConfig, setDirty } = useStore()
+  const { workspacePath, workspaceConfigs, config, configPath, dirty, updateConfig, setDirty, setConfig } = useStore()
 
-  if (!config || !configPath) {
+  if (!workspacePath) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Open a config file first
+        Open a workspace first
+      </div>
+    )
+  }
+
+  const handleSelectConfig = async (path: string) => {
+    const content = await window.electronAPI.loadConfigFile(path)
+    setConfig(path, content)
+  }
+
+  // Show config list if no config is selected
+  if (!config || !configPath) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <div className="border-b px-4 py-2">
+          <span className="text-sm font-medium">Configs</span>
+          <span className="text-xs text-muted-foreground ml-2 font-mono">{workspacePath}</span>
+        </div>
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-2 max-w-xl">
+            {workspaceConfigs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No YAML configs found in workspace</p>
+            ) : (
+              workspaceConfigs.map((path) => (
+                <Card
+                  key={path}
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => handleSelectConfig(path)}
+                >
+                  <CardHeader className="py-3 px-4 flex flex-row items-center gap-3">
+                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div>
+                      <CardTitle className="text-sm font-mono">
+                        {path.replace(workspacePath + '/', '')}
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))
+            )}
+          </div>
+        </ScrollArea>
       </div>
     )
   }
@@ -80,7 +122,6 @@ export function ConfigEditorPage() {
     if (oldName === newName || !newName) return
     const entries = Object.entries(orch.pipelines).map(([k, v]) => [k === oldName ? newName : k, v] as const)
     const pipelines = Object.fromEntries(entries)
-    // Update trigger references
     const triggers = orch.triggers.map((t) => (t.pipeline === oldName ? { ...t, pipeline: newName } : t))
     updateOrch({ pipelines, triggers })
   }
@@ -106,10 +147,16 @@ export function ConfigEditorPage() {
     <div className="flex flex-1 flex-col">
       {/* Toolbar */}
       <div className="flex items-center gap-2 border-b px-4 py-2">
+        <Button size="sm" variant="ghost" onClick={() => setConfig('', null as any)}>
+          &larr; Configs
+        </Button>
+        <Separator orientation="vertical" className="h-5" />
         <Button size="sm" onClick={handleSave} disabled={!dirty}>
           <Save className="h-4 w-4 mr-1" /> Save
         </Button>
-        <span className="text-xs text-muted-foreground font-mono flex-1 truncate">{configPath}</span>
+        <span className="text-xs text-muted-foreground font-mono flex-1 truncate">
+          {configPath.replace(workspacePath + '/', '')}
+        </span>
       </div>
 
       <ScrollArea className="flex-1">

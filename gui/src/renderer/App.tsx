@@ -3,6 +3,7 @@ import { Header } from './components/layout/Header'
 import { WelcomePage } from './pages/WelcomePage'
 import { ConfigEditorPage } from './pages/ConfigEditorPage'
 import { ExecutionPage } from './pages/ExecutionPage'
+import { HistoryPage } from './pages/HistoryPage'
 import { LogsPage } from './pages/LogsPage'
 import { useStore } from './hooks/use-store'
 
@@ -10,6 +11,7 @@ const pages = {
   welcome: WelcomePage,
   config: ConfigEditorPage,
   execution: ExecutionPage,
+  history: HistoryPage,
   logs: LogsPage
 }
 

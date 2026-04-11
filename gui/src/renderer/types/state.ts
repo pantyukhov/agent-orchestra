@@ -18,3 +18,38 @@ export interface LogFileInfo {
   size: number
   mtime: string
 }
+
+export interface RunRecord {
+  id: string
+  pipeline: string
+  config: string
+  status: 'running' | 'success' | 'failure' | 'canceled'
+  started_at: string
+  ended_at?: string
+  duration?: string
+  error?: string
+  steps: StepRecord[]
+  ssh?: { host: string; user: string; port: number }
+  tmux?: {
+    session: string
+    log_file: string
+    ttl: string
+    attach: string
+  }
+  meta?: Record<string, string>
+}
+
+export interface StepRecord {
+  name: string
+  status: string
+  duration?: string
+  exit_code: number
+  error?: string
+  output?: string
+}
+
+export interface WorkspaceInfo {
+  path: string
+  configs: string[]
+  history: RunRecord[]
+}

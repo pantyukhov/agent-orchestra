@@ -1,13 +1,19 @@
 import { create } from 'zustand'
 import type { Config } from '../types/config'
-import type { OrchestratorState, ProcessStatus, LogFileInfo } from '../types/state'
+import type { OrchestratorState, ProcessStatus, LogFileInfo, RunRecord } from '../types/state'
 
-type Page = 'welcome' | 'config' | 'execution' | 'logs'
+type Page = 'welcome' | 'config' | 'execution' | 'history' | 'logs'
 
 interface AppState {
   // Navigation
   page: Page
   setPage: (page: Page) => void
+
+  // Workspace
+  workspacePath: string | null
+  workspaceConfigs: string[]
+  setWorkspace: (path: string, configs: string[]) => void
+  clearWorkspace: () => void
 
   // Config
   configPath: string | null
@@ -29,6 +35,12 @@ interface AppState {
   orchestratorState: OrchestratorState | null
   setOrchestratorState: (state: OrchestratorState) => void
 
+  // History
+  runHistory: RunRecord[]
+  selectedRun: RunRecord | null
+  setRunHistory: (history: RunRecord[]) => void
+  setSelectedRun: (run: RunRecord | null) => void
+
   // Logs
   logFiles: LogFileInfo[]
   selectedLog: string | null
@@ -42,13 +54,26 @@ export const useStore = create<AppState>((set) => ({
   page: 'welcome',
   setPage: (page) => set({ page }),
 
+  workspacePath: null,
+  workspaceConfigs: [],
+  setWorkspace: (path, configs) => set({ workspacePath: path, workspaceConfigs: configs }),
+  clearWorkspace: () =>
+    set({
+      workspacePath: null,
+      workspaceConfigs: [],
+      configPath: null,
+      config: null,
+      dirty: false,
+      page: 'welcome'
+    }),
+
   configPath: null,
   config: null,
   dirty: false,
   setConfig: (path, config) => set({ configPath: path, config, dirty: false, page: 'config' }),
   updateConfig: (config) => set({ config, dirty: true }),
   setDirty: (dirty) => set({ dirty }),
-  clearConfig: () => set({ configPath: null, config: null, dirty: false, page: 'welcome' }),
+  clearConfig: () => set({ configPath: null, config: null, dirty: false }),
 
   processStatus: 'stopped',
   processOutput: [],
@@ -61,6 +86,11 @@ export const useStore = create<AppState>((set) => ({
 
   orchestratorState: null,
   setOrchestratorState: (orchestratorState) => set({ orchestratorState }),
+
+  runHistory: [],
+  selectedRun: null,
+  setRunHistory: (runHistory) => set({ runHistory }),
+  setSelectedRun: (selectedRun) => set({ selectedRun }),
 
   logFiles: [],
   selectedLog: null,

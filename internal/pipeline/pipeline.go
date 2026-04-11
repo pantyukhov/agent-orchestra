@@ -9,6 +9,7 @@ import (
 
 	"github.com/pavelpantiukhov/agent-orchestra/internal/action"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/config"
+	"github.com/pavelpantiukhov/agent-orchestra/internal/history"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/runner"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/tmpl"
 )
@@ -35,6 +36,10 @@ type Pipeline struct {
 	GitLab     LabelChecker             // optional, for checking stop labels
 	Project    string                   // GitLab project path (for label checks)
 	IssueIID   string                   // GitLab issue IID (for label checks)
+	History    *history.Store           // optional, for recording run history
+	ConfigPath string                   // config file path (for history)
+
+	currentRun *history.RunRecord // current run record (internal)
 }
 
 // NewFromConfig creates a pipeline from a PipelineConfig (simple mode).
@@ -54,18 +59,64 @@ func (p *Pipeline) Run(ctx context.Context) error {
 		tmpl.EnsureStepEntries(p.Data, p.Steps)
 	}
 
+	// Start history record
+	var run *history.RunRecord
+	if p.History != nil {
+		var err error
+		run, err = p.History.Start(p.Name, p.ConfigPath)
+		if err != nil {
+			p.Logger.Warn("failed to start history record", "error", err)
+		} else {
+			// Record SSH/tmux info
+			if p.Defaults.SSH != nil {
+				run.SSH = &history.SSHInfo{
+					Host: p.Defaults.SSH.Host,
+					User: p.Defaults.SSH.User,
+					Port: p.Defaults.SSH.Port,
+				}
+				if p.Defaults.SSH.Tmux != nil {
+					session := p.Defaults.SSH.Tmux.Session
+					if session == "" {
+						session = p.Name
+					}
+					session = fmt.Sprintf("%s-%s", session, time.Now().Format("20060102-150405"))
+					logDir := p.Defaults.SSH.Tmux.LogDir
+					if logDir == "" {
+						logDir = "/tmp/agent-orchestra"
+					}
+					ttl := p.Defaults.SSH.Tmux.TTL
+					if ttl == "" {
+						ttl = "72h"
+					}
+					run.Tmux = &history.TmuxInfo{
+						Session: session,
+						LogFile: fmt.Sprintf("%s/%s.log", logDir, session),
+						TTL:     ttl,
+						Attach:  fmt.Sprintf("ssh %s@%s -t 'tmux attach -t %s'", p.Defaults.SSH.User, p.Defaults.SSH.Host, session),
+					}
+					_ = p.History.Finish(run, nil) // persist tmux info immediately
+					run.Status = "running"
+				}
+			}
+		}
+	}
+	p.currentRun = run
+
 	loopDelay := config.ParseDuration(p.Loop.Delay, 0)
 	count := p.Loop.Count
 
+	var runErr error
 	for iteration := 1; count == 0 || iteration <= count; iteration++ {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			runErr = ctx.Err()
+			break
 		}
 
 		p.Logger.Info("starting iteration", "iteration", iteration, "pipeline", p.Name)
 
 		if err := p.runSteps(ctx, p.Steps); err != nil {
-			return err
+			runErr = err
+			break
 		}
 
 		p.Logger.Info("iteration complete", "iteration", iteration)
@@ -75,12 +126,21 @@ func (p *Pipeline) Run(ctx context.Context) error {
 			select {
 			case <-time.After(loopDelay):
 			case <-ctx.Done():
-				return ctx.Err()
+				runErr = ctx.Err()
 			}
 		}
 	}
 
-	return nil
+	// Finish history record
+	if p.History != nil && run != nil {
+		if ctx.Err() == context.Canceled {
+			_ = p.History.Cancel(run)
+		} else {
+			_ = p.History.Finish(run, runErr)
+		}
+	}
+
+	return runErr
 }
 
 func (p *Pipeline) runSteps(ctx context.Context, steps []config.StepConfig) error {
@@ -186,6 +246,33 @@ func (p *Pipeline) storeStepOutput(name string, result *runner.Result) {
 		"output":    result.Output,
 		"exit_code": fmt.Sprintf("%d", result.ExitCode),
 	}
+}
+
+// recordStep saves a step result to run history.
+func (p *Pipeline) recordStep(name, status string, result *runner.Result) {
+	if p.History == nil || p.currentRun == nil {
+		return
+	}
+	sr := history.StepRecord{
+		Name:   name,
+		Status: status,
+	}
+	if result != nil {
+		sr.ExitCode = result.ExitCode
+		sr.Duration = result.Duration.Round(time.Millisecond).String()
+		if result.Err != nil {
+			sr.Error = result.Err.Error()
+		}
+		// Truncate output for history (keep first 4KB)
+		if result.Output != "" {
+			out := result.Output
+			if len(out) > 4096 {
+				out = out[:4096] + "\n... (truncated)"
+			}
+			sr.Output = out
+		}
+	}
+	_ = p.History.AddStep(p.currentRun, sr)
 }
 
 func (p *Pipeline) runAction(ctx context.Context, step config.StepConfig) error {
@@ -299,6 +386,7 @@ func (p *Pipeline) runAgent(ctx context.Context, step config.StepConfig) (*runne
 		lastResult = result
 		if result.Err == nil {
 			p.Logger.Info("agent completed", "agent", step.Name, "duration", result.Duration.Round(time.Millisecond))
+			p.recordStep(step.Name, "success", &result)
 			return &lastResult, nil
 		}
 
@@ -306,5 +394,6 @@ func (p *Pipeline) runAgent(ctx context.Context, step config.StepConfig) (*runne
 		p.Logger.Error("agent failed", "agent", step.Name, "error", result.Err, "exit_code", result.ExitCode, "duration", result.Duration.Round(time.Millisecond))
 	}
 
+	p.recordStep(step.Name, "failure", &lastResult)
 	return &lastResult, lastErr
 }

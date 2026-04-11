@@ -10,7 +10,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"path/filepath"
+
 	"github.com/pavelpantiukhov/agent-orchestra/internal/config"
+	"github.com/pavelpantiukhov/agent-orchestra/internal/history"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/orchestrator"
 	"github.com/pavelpantiukhov/agent-orchestra/internal/pipeline"
 )
@@ -71,6 +74,10 @@ func main() {
 			"loop_count", cfg.Pipeline.Loop.Count)
 
 		p := pipeline.NewFromConfig(cfg.Pipeline, logger)
+		// Set up history store next to the config file
+		historyDir := filepath.Join(filepath.Dir(*configPath), ".history")
+		p.History = history.NewStore(historyDir)
+		p.ConfigPath = *configPath
 		if err := p.Run(ctx); err != nil {
 			if errors.Is(err, context.Canceled) {
 				logger.Info("pipeline interrupted by signal")

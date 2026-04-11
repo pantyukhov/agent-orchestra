@@ -1,11 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Workspace
+  openWorkspace: () => ipcRenderer.invoke('workspace:open'),
+  getWorkspaceConfigs: (dir: string) => ipcRenderer.invoke('workspace:configs', dir),
+  getWorkspaceHistory: (dir: string) => ipcRenderer.invoke('workspace:history', dir),
+  getRecentWorkspaces: () => ipcRenderer.invoke('workspace:recent'),
+
   // Config
   openConfigFile: () => ipcRenderer.invoke('config:open'),
+  loadConfigFile: (path: string) => ipcRenderer.invoke('config:load', path),
   saveConfigFile: (path: string, config: unknown) => ipcRenderer.invoke('config:save', path, config),
   createNewConfig: (dir: string, mode: string) => ipcRenderer.invoke('config:create', dir, mode),
-  getRecentConfigs: () => ipcRenderer.invoke('config:recent'),
 
   // Process
   startProcess: (configPath: string, once: boolean) => ipcRenderer.invoke('process:start', configPath, once),

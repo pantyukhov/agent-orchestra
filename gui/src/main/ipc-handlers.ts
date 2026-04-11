@@ -1,22 +1,88 @@
 import { ipcMain, dialog, shell } from 'electron'
 import { join, dirname } from 'path'
-import { writeFileSync } from 'fs'
+import { readdirSync, readFileSync, existsSync, writeFileSync } from 'fs'
 import yaml from 'js-yaml'
 import { loadConfig, saveConfig, createDefaultConfig } from './config-manager'
 import { startProcess, stopProcess, getProcessStatus } from './process-manager'
 import { watchState, unwatchState } from './state-watcher'
 import { getLogFiles, readLogFile, tailLogFile, untailLogFile, watchLogDir } from './log-watcher'
 
-const recentConfigs: string[] = []
+const recentWorkspaces: string[] = []
 
 function addRecent(path: string) {
-  const idx = recentConfigs.indexOf(path)
-  if (idx !== -1) recentConfigs.splice(idx, 1)
-  recentConfigs.unshift(path)
-  if (recentConfigs.length > 10) recentConfigs.pop()
+  const idx = recentWorkspaces.indexOf(path)
+  if (idx !== -1) recentWorkspaces.splice(idx, 1)
+  recentWorkspaces.unshift(path)
+  if (recentWorkspaces.length > 10) recentWorkspaces.pop()
+}
+
+function findYamlFiles(dir: string): string[] {
+  const results: string[] = []
+  const scan = (d: string) => {
+    try {
+      const entries = readdirSync(d, { withFileTypes: true })
+      for (const entry of entries) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
+        const full = join(d, entry.name)
+        if (entry.isDirectory()) {
+          scan(full)
+        } else if (entry.name.endsWith('.yaml') || entry.name.endsWith('.yml')) {
+          results.push(full)
+        }
+      }
+    } catch {
+      // permission denied, etc.
+    }
+  }
+  scan(dir)
+  return results.sort()
+}
+
+function loadHistory(workspaceDir: string): unknown[] {
+  const historyDir = join(workspaceDir, '.history')
+  if (!existsSync(historyDir)) return []
+
+  try {
+    const entries = readdirSync(historyDir)
+    return entries
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => {
+        try {
+          const data = readFileSync(join(historyDir, f), 'utf-8')
+          return JSON.parse(data)
+        } catch {
+          return null
+        }
+      })
+      .filter(Boolean)
+      .sort((a: any, b: any) => (b.started_at || '').localeCompare(a.started_at || ''))
+  } catch {
+    return []
+  }
 }
 
 export function registerIpcHandlers(): void {
+  // Workspace
+  ipcMain.handle('workspace:open', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const dir = result.filePaths[0]
+    addRecent(dir)
+    return dir
+  })
+
+  ipcMain.handle('workspace:configs', (_e, dir: string) => {
+    return findYamlFiles(dir)
+  })
+
+  ipcMain.handle('workspace:history', (_e, dir: string) => {
+    return loadHistory(dir)
+  })
+
+  ipcMain.handle('workspace:recent', () => recentWorkspaces)
+
   // Config
   ipcMain.handle('config:open', async () => {
     const result = await dialog.showOpenDialog({
@@ -26,20 +92,15 @@ export function registerIpcHandlers(): void {
     if (result.canceled || !result.filePaths[0]) return null
     const path = result.filePaths[0]
     const content = loadConfig(path)
-    addRecent(path)
-
-    // Auto-watch logs if orchestrator config
-    if (content.orchestrator?.logging?.dir) {
-      const logDir = join(dirname(path), content.orchestrator.logging.dir)
-      watchLogDir(logDir)
-    }
-
     return { path, content }
+  })
+
+  ipcMain.handle('config:load', (_e, path: string) => {
+    return loadConfig(path)
   })
 
   ipcMain.handle('config:save', (_e, path: string, config: unknown) => {
     saveConfig(path, config as any)
-    addRecent(path)
   })
 
   ipcMain.handle('config:create', async (_e, dir: string, mode: 'pipeline' | 'orchestrator') => {
@@ -48,11 +109,8 @@ export function registerIpcHandlers(): void {
     const filePath = join(dir, filename)
     const content = yaml.dump(config, { indent: 2, lineWidth: -1, noRefs: true })
     writeFileSync(filePath, content, 'utf-8')
-    addRecent(filePath)
     return filePath
   })
-
-  ipcMain.handle('config:recent', () => recentConfigs)
 
   // Process
   ipcMain.handle('process:start', (_e, configPath: string, once: boolean) => {
