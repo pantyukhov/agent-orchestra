@@ -26,7 +26,12 @@ func runSSH(ctx context.Context, agent config.StepConfig, defaults config.Defaul
 	workingDir := agent.ResolvedWorkingDir(defaults)
 
 	// Build the remote command string
-	remoteCmd := buildRemoteCommand(command, args, env, workingDir)
+	var remoteCmd string
+	if sshCfg.Tmux != nil {
+		remoteCmd = buildTmuxCommand(command, args, env, workingDir, sshCfg.Tmux, agent.Name)
+	} else {
+		remoteCmd = buildRemoteCommand(command, args, env, workingDir)
+	}
 
 	// Connect
 	client, err := dialSSH(ctx, sshCfg)
@@ -245,6 +250,48 @@ func buildRemoteCommand(command string, args []string, env map[string]string, wo
 	}
 
 	return strings.Join(parts, " ")
+}
+
+// buildTmuxCommand wraps a command in a tmux session on the remote host.
+// The command runs inside tmux, output is teed to a log file, and tail -f streams it back.
+// If SSH disconnects, the tmux session keeps running. User can reattach with:
+//   tmux attach -t <session>
+func buildTmuxCommand(command string, args []string, env map[string]string, workingDir string, tmuxCfg *config.TmuxConfig, stepName string) string {
+	session := tmuxCfg.Session
+	if session == "" {
+		session = stepName
+	}
+	if session == "" {
+		session = "agent"
+	}
+
+	logDir := tmuxCfg.LogDir
+	if logDir == "" {
+		logDir = "/tmp/agent-orchestra"
+	}
+
+	logFile := fmt.Sprintf("%s/%s.log", logDir, session)
+
+	// Build the inner command (what runs inside tmux)
+	innerCmd := buildRemoteCommand(command, args, env, workingDir)
+
+	// The full remote command:
+	// 1. Create log directory
+	// 2. Kill existing session if any (idempotent restart)
+	// 3. Start new tmux session with command piped to log file
+	// 4. Tail the log file to stream output back through SSH
+	return fmt.Sprintf(
+		"mkdir -p %s; rm -f %s; touch %s; "+
+			"tmux kill-session -t %s 2>/dev/null; "+
+			"tmux new-session -d -s %s %s; "+
+			"tmux pipe-pane -t %s -o 'cat >> %s'; "+
+			"tail -n +1 -f %s",
+		shellQuote(logDir), shellQuote(logFile), shellQuote(logFile),
+		shellQuote(session),
+		shellQuote(session), shellQuote(innerCmd),
+		shellQuote(session), shellQuote(logFile),
+		shellQuote(logFile),
+	)
 }
 
 func shellQuote(s string) string {

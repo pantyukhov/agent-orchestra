@@ -38,13 +38,19 @@ type DefaultsConfig struct {
 }
 
 type SSHConfig struct {
-	Host       string `yaml:"host"`
-	User       string `yaml:"user"`
-	Port       int    `yaml:"port"`
-	KeyFile    string `yaml:"key_file"`
-	Password   string `yaml:"password"`
-	PassEnv    string `yaml:"password_env"` // env var name containing password
-	KnownHosts string `yaml:"known_hosts"`  // path to known_hosts file, empty = insecure
+	Host       string     `yaml:"host"`
+	User       string     `yaml:"user"`
+	Port       int        `yaml:"port"`
+	KeyFile    string     `yaml:"key_file"`
+	Password   string     `yaml:"password"`
+	PassEnv    string     `yaml:"password_env"` // env var name containing password
+	KnownHosts string     `yaml:"known_hosts"`  // path to known_hosts file, empty = insecure
+	Tmux       *TmuxConfig `yaml:"tmux"`
+}
+
+type TmuxConfig struct {
+	Session string `yaml:"session"` // tmux session name (defaults to step name)
+	LogDir  string `yaml:"log_dir"` // remote dir for output logs (defaults to /tmp/agent-orchestra)
 }
 
 type LoopConfig struct {
