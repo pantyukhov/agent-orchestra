@@ -1,0 +1,35 @@
+orchestrator:
+  name: "test-orchestrator"
+  project_root: "."
+  defaults:
+    command: "echo"
+    args: ["test"]
+    timeout: "10m"
+  concurrency:
+    max: 1
+  logging:
+    dir: "./logs"
+    per_task: true
+  persistence:
+    file: ".state.json"
+  triggers:
+    - name: "test-trigger"
+      type: "gitlab-issues"
+      gitlab:
+        project: "test/project"
+        labels: ["ai:todo"]
+      poll_interval: "4h"
+      priority: 1
+      pipeline: "test-pipe"
+  pipelines:
+    test-pipe:
+      state:
+        on_start:
+          remove_labels: ["ai:todo"]
+          add_labels: ["ai:in-progress"]
+        on_success:
+          remove_labels: ["ai:in-progress"]
+          add_labels: ["ai:done"]
+      steps:
+        - name: "do-work"
+          prompt: "Do the work"

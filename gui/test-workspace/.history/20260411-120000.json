@@ -1,0 +1,19 @@
+{
+  "id": "20260411-120000",
+  "pipeline": "test-pipeline",
+  "config": "configs/test-pipeline.yaml",
+  "status": "failure",
+  "started_at": "2026-04-11T12:00:00+03:00",
+  "ended_at": "2026-04-11T12:02:00+03:00",
+  "duration": "2m0s",
+  "error": "exit code 1: process exited with error",
+  "steps": [
+    {
+      "name": "step-1",
+      "status": "failure",
+      "duration": "2m",
+      "exit_code": 1,
+      "error": "command failed"
+    }
+  ]
+}

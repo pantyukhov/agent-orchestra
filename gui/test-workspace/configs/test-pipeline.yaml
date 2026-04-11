@@ -1,0 +1,11 @@
+pipeline:
+  name: "test-pipeline"
+  defaults:
+    command: "echo"
+    args: ["hello"]
+    timeout: "5m"
+  steps:
+    - name: "step-1"
+      prompt: "Hello world"
+    - name: "step-2"
+      prompt: "Second step"

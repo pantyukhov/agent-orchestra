@@ -1,0 +1,29 @@
+{
+  "id": "20260411-100000",
+  "pipeline": "test-pipeline",
+  "config": "configs/test-pipeline.yaml",
+  "status": "success",
+  "started_at": "2026-04-11T10:00:00+03:00",
+  "ended_at": "2026-04-11T10:05:00+03:00",
+  "duration": "5m0s",
+  "steps": [
+    {
+      "name": "step-1",
+      "status": "success",
+      "duration": "3m",
+      "exit_code": 0,
+      "output": "Hello world output"
+    }
+  ],
+  "ssh": {
+    "host": "178.104.78.35",
+    "user": "dev",
+    "port": 22
+  },
+  "tmux": {
+    "session": "test-20260411-100000",
+    "log_file": "/tmp/agent-orchestra/test-20260411-100000.log",
+    "ttl": "72h",
+    "attach": "ssh dev@178.104.78.35 -t 'tmux attach -t test-20260411-100000'"
+  }
+}
