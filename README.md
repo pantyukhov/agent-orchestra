@@ -9,7 +9,7 @@
 [![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-[Quick Start](#quick-start) &bull; [Pipeline Mode](#pipeline-mode) &bull; [Orchestrator Mode](#orchestrator-mode) &bull; [Configuration](#configuration-reference)
+[Quick Start](#quick-start) &bull; [Pipeline Mode](#pipeline-mode) &bull; [Orchestrator Mode](#orchestrator-mode) &bull; [SSH & tmux](#ssh--tmux-remote-execution) &bull; [Desktop GUI](#desktop-gui) &bull; [Configuration](#configuration-reference)
 
 </div>
 
@@ -17,21 +17,24 @@
 
 agent-orchestra is a lightweight CLI tool that chains AI agents (Claude Code, etc.) and shell commands into repeatable workflows. Define your steps in YAML — loops, retries, groups, and error handling come built-in.
 
-Two modes of operation:
+Three ways to use it:
 
 - **Pipeline** — run steps sequentially from a YAML config
 - **Orchestrator** — event-driven loop that polls GitLab, processes events through pipelines, and manages state via issue labels
+- **Desktop GUI** — Electron app to visually manage configs, run pipelines, and browse execution history
 
 ## Features
 
 - **YAML-driven pipelines** with loops, groups, retries, and error handling
 - **Orchestrator mode** with GitLab integration (issues + CI failures)
+- **SSH remote execution** — run agents on remote hosts with persistent tmux sessions
+- **Desktop GUI** — Electron + React + shadcn/ui app for visual config editing and monitoring
+- **Run history** — git-friendly JSON records of every execution with tmux reconnect info
 - **Template engine** — inject event data into prompts and actions via `{{ .key }}` syntax
 - **Step output capture** — pass stdout between steps
 - **State machine** — automatic label transitions (`ai:todo` → `ai:in-progress` → `ai:done`)
 - **Built-in actions** — git operations, GitLab comments, issue management
 - **Concurrency control** with deduplication and per-task logging
-- **Minimal dependencies** — single binary, only `gopkg.in/yaml.v3`
 
 ## Quick Start
 
@@ -287,6 +290,112 @@ CI failure:      (detected)  ──▸  ai:in-progress  ──▸  ai:done
 Needs human:     ai:in-progress  ──▸  ai:needs-review
 ```
 
+## SSH & tmux Remote Execution
+
+Run agents on remote machines via SSH. Commands can run inside persistent tmux sessions — if SSH disconnects, the agent keeps running.
+
+```yaml
+pipeline:
+  name: "remote-agent"
+  defaults:
+    command: "claude"
+    args: ["--dangerously-skip-permissions", "-p"]
+    timeout: "30m"
+    ssh:
+      host: "build-server.example.com"
+      user: "deploy"
+      # key_file: "~/.ssh/id_ed25519"  # auto-detected if not set
+      tmux:
+        session: "my-agent"             # base name; each run gets a unique suffix
+        log_dir: "/tmp/agent-orchestra"
+        ttl: "72h"                      # auto-kill session after this duration
+
+  steps:
+    - name: "task"
+      prompt: "Run the analysis task"
+```
+
+### SSH Config Fields
+
+| Field | Description |
+|-------|-------------|
+| `host` | Remote host address |
+| `user` | SSH username |
+| `port` | SSH port (default: 22) |
+| `key_file` | Path to private key (auto-detects `~/.ssh/id_ed25519` and `id_rsa`) |
+| `password` | Password auth (prefer keys) |
+| `password_env` | Env var containing password |
+| `known_hosts` | Path to known_hosts file (empty = skip verification) |
+| `tmux.session` | Base session name (each run appends timestamp) |
+| `tmux.log_dir` | Remote directory for output logs |
+| `tmux.ttl` | Auto-kill session after duration (default: `72h`) |
+
+### Reconnecting to tmux Sessions
+
+Each run creates a unique tmux session (e.g., `my-agent-20260411-120000`):
+
+```bash
+# List sessions
+ssh deploy@build-server.example.com 'tmux ls'
+
+# Reattach
+ssh deploy@build-server.example.com -t 'tmux attach -t my-agent-20260411-120000'
+```
+
+SSH config can be set at `defaults` level (all steps remote) or per-step. Steps without SSH config run locally.
+
+See [`example/ssh-tmux.yaml`](example/ssh-tmux.yaml) for a complete example.
+
+## Desktop GUI
+
+An Electron desktop app for visual management of orchestrator configs, execution, and history.
+
+### Install & Run
+
+```bash
+cd gui
+npm install
+npm run dev       # development with hot-reload
+npm run build     # production build
+```
+
+### Features
+
+- **Workspace mode** — open a project folder (like VS Code) to see all configs, history, and logs
+- **Config editor** — visual forms for triggers, pipelines, steps, state transitions, and SSH/tmux settings
+- **Execution** — start/stop the orchestrator, live terminal output, state monitoring
+- **Run history** — browse all past runs with status, duration, step results, and tmux attach commands
+- **Logs** — browse and view per-task log files
+
+### Workspace Structure
+
+```
+my-workspace/
+  configs/               # YAML config files (orchestrator + pipeline)
+    orchestrator.yaml
+    hello-world.yaml
+  .history/              # Run history (git-friendly JSON, one file per run)
+    20260411-120000.json
+    20260411-160000.json
+  logs/                  # Per-task execution logs
+```
+
+History files record everything needed to resume or debug a run:
+
+```json
+{
+  "id": "20260411-120000",
+  "pipeline": "hello-world-remote",
+  "status": "success",
+  "duration": "5m32s",
+  "tmux": {
+    "session": "hello-20260411-120000",
+    "attach": "ssh dev@192.168.1.100 -t 'tmux attach -t hello-20260411-120000'"
+  },
+  "steps": [...]
+}
+```
+
 ## Configuration Reference
 
 ### CLI Flags
@@ -362,15 +471,19 @@ cmd/agent-orchestra/       CLI entrypoint
 internal/
   config/                  YAML config types and validation
   pipeline/                Step execution with loops, groups, retries
-  runner/                  Shell command runner (timeout, env, working_dir)
+  runner/                  Shell command runner + SSH/tmux executor
   orchestrator/            Event loop: poll → prioritize → run → transition
   trigger/                 Trigger interface + GitLab API client
   action/                  Built-in actions (git, gitlab)
   event/                   Event type + priority queue
   state/                   JSON file persistence, locks, dedup
+  history/                 Run history (git-friendly JSON records)
   tmpl/                    Go template rendering
+gui/                       Electron + React + shadcn/ui desktop app
 example/
-  orchestrator.yaml        Full orchestrator config example
+  orchestrator.yaml        Orchestrator config example
+  scheduled.yaml           Scheduled polling example (every 4h)
+  ssh-tmux.yaml            SSH + tmux remote execution example
 ```
 
 ## Contributing
