@@ -1,19 +1,42 @@
-import { ipcMain, dialog, shell } from 'electron'
+import { ipcMain, dialog, shell, app } from 'electron'
 import { join, dirname } from 'path'
-import { readdirSync, readFileSync, existsSync, writeFileSync } from 'fs'
+import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'
 import yaml from 'js-yaml'
 import { loadConfig, saveConfig, createDefaultConfig } from './config-manager'
 import { startProcess, stopProcess, getProcessStatus } from './process-manager'
 import { watchState, unwatchState } from './state-watcher'
 import { getLogFiles, readLogFile, tailLogFile, untailLogFile, watchLogDir } from './log-watcher'
 
-const recentWorkspaces: string[] = []
+// Persist recent workspaces to disk
+const settingsPath = join(app.getPath('userData'), 'settings.json')
+
+function loadSettings(): { recentWorkspaces: string[] } {
+  try {
+    const data = readFileSync(settingsPath, 'utf-8')
+    return JSON.parse(data)
+  } catch {
+    return { recentWorkspaces: [] }
+  }
+}
+
+function saveSettings(settings: { recentWorkspaces: string[] }) {
+  try {
+    mkdirSync(dirname(settingsPath), { recursive: true })
+    writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
+  } catch {
+    // ignore
+  }
+}
+
+const settings = loadSettings()
+const recentWorkspaces: string[] = settings.recentWorkspaces
 
 function addRecent(path: string) {
   const idx = recentWorkspaces.indexOf(path)
   if (idx !== -1) recentWorkspaces.splice(idx, 1)
   recentWorkspaces.unshift(path)
   if (recentWorkspaces.length > 10) recentWorkspaces.pop()
+  saveSettings({ recentWorkspaces })
 }
 
 function findYamlFiles(dir: string): string[] {

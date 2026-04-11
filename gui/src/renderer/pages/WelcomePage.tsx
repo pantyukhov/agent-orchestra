@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Clock } from 'lucide-react'
+import { FolderOpen, Clock, Loader2 } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { useStore } from '../hooks/use-store'
 
 export function WelcomePage() {
-  const { setWorkspace, setPage } = useStore()
+  const { setWorkspace, setPage, workspacePath } = useStore()
   const [recent, setRecent] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    window.electronAPI.getRecentWorkspaces().then(setRecent)
+    // Load recent workspaces and auto-open the last one
+    window.electronAPI.getRecentWorkspaces().then(async (list) => {
+      setRecent(list)
+      if (!workspacePath && list.length > 0) {
+        await openWorkspace(list[0])
+      }
+      setLoading(false)
+    })
   }, [])
 
   const handleOpen = async () => {
@@ -19,9 +27,22 @@ export function WelcomePage() {
   }
 
   const openWorkspace = async (dir: string) => {
-    const configs = await window.electronAPI.getWorkspaceConfigs(dir)
-    setWorkspace(dir, configs)
-    setPage('config')
+    setLoading(true)
+    try {
+      const configs = await window.electronAPI.getWorkspaceConfigs(dir)
+      setWorkspace(dir, configs)
+      setPage('config')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   return (
