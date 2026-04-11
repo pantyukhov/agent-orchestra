@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Save, Plus, FileText, ArrowLeft, Loader2 } from 'lucide-react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
+import { Save, Plus, FileText, ArrowLeft, Loader2, Play } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -120,8 +120,26 @@ export function ConfigEditorPage() {
   }
 
   const handleBack = () => {
+    if (dirty && !window.confirm('You have unsaved changes. Discard?')) return
     clearConfig()
   }
+
+  const handleRun = () => {
+    useStore.getState().setPage('execution')
+  }
+
+  // Cmd+S / Ctrl+S to save
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      e.preventDefault()
+      if (dirty) handleSave()
+    }
+  }, [dirty, handleSave])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
 
   const toolbar = (
     <div className="flex items-center gap-2 border-b px-4 py-2">
@@ -145,6 +163,9 @@ export function ConfigEditorPage() {
       <Badge variant="outline" className="text-xs">
         {config.orchestrator ? 'orchestrator' : 'pipeline'}
       </Badge>
+      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleRun}>
+        <Play className="h-3.5 w-3.5 mr-1" /> Run
+      </Button>
     </div>
   )
 
@@ -513,6 +534,28 @@ function OrchestratorEditor({
         </section>
 
         <Separator />
+
+        {/* SSH for orchestrator defaults */}
+        {orch.defaults?.ssh ? (
+          <>
+            <SSHSection
+              ssh={orch.defaults.ssh}
+              onChange={(ssh) => updateOrch({ defaults: { ...orch.defaults, ssh } })}
+            />
+            <Separator />
+          </>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => updateOrch({ defaults: { ...orch.defaults, ssh: { host: '', user: '' } } })}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add SSH Remote Execution
+            </Button>
+            <Separator />
+          </>
+        )}
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Runtime</h2>
