@@ -252,18 +252,23 @@ func buildRemoteCommand(command string, args []string, env map[string]string, wo
 	return strings.Join(parts, " ")
 }
 
-// buildTmuxCommand wraps a command in a tmux session on the remote host.
-// The command runs inside tmux, output is teed to a log file, and tail -f streams it back.
+// buildTmuxCommand wraps a command in a unique tmux session on the remote host.
+// Each invocation creates a new session with a timestamp suffix.
+// A background TTL watchdog auto-kills the session after the configured duration (default 72h).
 // If SSH disconnects, the tmux session keeps running. User can reattach with:
-//   tmux attach -t <session>
+//
+//	tmux attach -t <session>
 func buildTmuxCommand(command string, args []string, env map[string]string, workingDir string, tmuxCfg *config.TmuxConfig, stepName string) string {
-	session := tmuxCfg.Session
-	if session == "" {
-		session = stepName
+	baseName := tmuxCfg.Session
+	if baseName == "" {
+		baseName = stepName
 	}
-	if session == "" {
-		session = "agent"
+	if baseName == "" {
+		baseName = "agent"
 	}
+
+	// Unique session per run: base-YYYYMMDD-HHMMSS
+	session := fmt.Sprintf("%s-%s", baseName, time.Now().Format("20060102-150405"))
 
 	logDir := tmuxCfg.LogDir
 	if logDir == "" {
@@ -272,24 +277,32 @@ func buildTmuxCommand(command string, args []string, env map[string]string, work
 
 	logFile := fmt.Sprintf("%s/%s.log", logDir, session)
 
+	// TTL: auto-kill session after duration (default 72h)
+	ttl := tmuxCfg.TTL
+	if ttl == "" {
+		ttl = "72h"
+	}
+	ttlSeconds := int64(config.ParseDuration(ttl, 72*time.Hour).Seconds())
+
 	// Build the inner command (what runs inside tmux)
 	innerCmd := buildRemoteCommand(command, args, env, workingDir)
 
 	// The full remote command:
 	// 1. Create log directory
-	// 2. Kill existing session if any (idempotent restart)
-	// 3. Start new tmux session with command piped to log file
-	// 4. Tail the log file to stream output back through SSH
+	// 2. Start new tmux session with unique name
+	// 3. Pipe tmux output to log file
+	// 4. Spawn background TTL watchdog that kills session after expiry
+	// 5. Tail the log file to stream output back through SSH
 	return fmt.Sprintf(
-		"mkdir -p %s; rm -f %s; touch %s; "+
-			"tmux kill-session -t %s 2>/dev/null; "+
+		"mkdir -p %s; touch %s; "+
 			"tmux new-session -d -s %s %s; "+
 			"tmux pipe-pane -t %s -o 'cat >> %s'; "+
-			"tail -n +1 -f %s",
-		shellQuote(logDir), shellQuote(logFile), shellQuote(logFile),
-		shellQuote(session),
+			"(sleep %d && tmux kill-session -t %s 2>/dev/null) &"+
+			" tail -n +1 -f %s",
+		shellQuote(logDir), shellQuote(logFile),
 		shellQuote(session), shellQuote(innerCmd),
 		shellQuote(session), shellQuote(logFile),
+		ttlSeconds, shellQuote(session),
 		shellQuote(logFile),
 	)
 }

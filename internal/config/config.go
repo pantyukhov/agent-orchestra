@@ -49,8 +49,9 @@ type SSHConfig struct {
 }
 
 type TmuxConfig struct {
-	Session string `yaml:"session"` // tmux session name (defaults to step name)
+	Session string `yaml:"session"` // tmux session base name (defaults to step name); each run gets a unique suffix
 	LogDir  string `yaml:"log_dir"` // remote dir for output logs (defaults to /tmp/agent-orchestra)
+	TTL     string `yaml:"ttl"`     // auto-kill session after this duration (default "72h")
 }
 
 type LoopConfig struct {

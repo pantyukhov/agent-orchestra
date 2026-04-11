@@ -1,0 +1,30 @@
+# Example: Run an agent on a remote machine via SSH + tmux
+#
+# Each run creates a unique tmux session (e.g., hello-world-20260411-120000).
+# If SSH disconnects, the tmux session keeps running on the remote host.
+# Reconnect with: ssh dev@178.104.78.35 -t 'tmux attach -t <session-name>'
+# Sessions auto-expire after TTL (default 72h).
+#
+# Usage:
+#   agent-orchestra -config example/ssh-tmux.yaml
+
+pipeline:
+  name: "hello-world-remote"
+
+  defaults:
+    command: "claude"
+    args: ["--dangerously-skip-permissions", "-p"]
+    timeout: "10m"
+    ssh:
+      host: "178.104.78.35"
+      user: "dev"
+      # key_file: "~/.ssh/id_ed25519"  # auto-detected if not set
+      tmux:
+        session: "hello-world"          # base name; each run appends timestamp
+        log_dir: "/tmp/agent-orchestra" # remote log directory
+        ttl: "72h"                      # auto-kill session after this duration
+
+  steps:
+    - name: "hello"
+      prompt: "Say hello and tell me about the system you're running on (uname, hostname, pwd)"
+      capture_output: true
