@@ -21,15 +21,10 @@ type Result struct {
 }
 
 // Run executes an agent command with resolved defaults applied.
+// If SSH config is present, the command runs on the remote host.
 func Run(ctx context.Context, agent config.StepConfig, defaults config.DefaultsConfig, logger *slog.Logger) Result {
-	start := time.Now()
-
-	command, args := agent.ResolvedCommand(defaults)
-	timeout := agent.ResolvedTimeout(defaults)
-	env := agent.ResolvedEnv(defaults)
-	workingDir := agent.ResolvedWorkingDir(defaults)
-
 	// Apply timeout if configured
+	timeout := agent.ResolvedTimeout(defaults)
 	if timeout != "" {
 		d := config.ParseDuration(timeout, 0)
 		if d > 0 {
@@ -38,6 +33,17 @@ func Run(ctx context.Context, agent config.StepConfig, defaults config.DefaultsC
 			defer cancel()
 		}
 	}
+
+	// Route to SSH executor if configured
+	if sshCfg := agent.ResolvedSSH(defaults); sshCfg != nil && sshCfg.Host != "" {
+		return runSSH(ctx, agent, defaults, logger)
+	}
+
+	start := time.Now()
+
+	command, args := agent.ResolvedCommand(defaults)
+	env := agent.ResolvedEnv(defaults)
+	workingDir := agent.ResolvedWorkingDir(defaults)
 
 	cmd := exec.CommandContext(ctx, command, args...)
 

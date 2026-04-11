@@ -34,6 +34,17 @@ type DefaultsConfig struct {
 	WorkingDir string            `yaml:"working_dir"`
 	Timeout    string            `yaml:"timeout"`
 	OnError    string            `yaml:"on_error"`
+	SSH        *SSHConfig        `yaml:"ssh"`
+}
+
+type SSHConfig struct {
+	Host       string `yaml:"host"`
+	User       string `yaml:"user"`
+	Port       int    `yaml:"port"`
+	KeyFile    string `yaml:"key_file"`
+	Password   string `yaml:"password"`
+	PassEnv    string `yaml:"password_env"` // env var name containing password
+	KnownHosts string `yaml:"known_hosts"`  // path to known_hosts file, empty = insecure
 }
 
 type LoopConfig struct {
@@ -66,6 +77,9 @@ type StepConfig struct {
 	Message    string `yaml:"message"`     // git-save
 	Issue      string `yaml:"issue"`       // gitlab-comment, gitlab-close-issue
 	Body       string `yaml:"body"`        // gitlab-comment
+
+	// SSH remote execution
+	SSH *SSHConfig `yaml:"ssh"`
 
 	// Output capture
 	CaptureOutput bool `yaml:"capture_output"` // capture stdout for use in later steps
@@ -142,6 +156,13 @@ func (s *StepConfig) ResolvedTimeout(defaults DefaultsConfig) string {
 		return s.Timeout
 	}
 	return defaults.Timeout
+}
+
+func (s *StepConfig) ResolvedSSH(defaults DefaultsConfig) *SSHConfig {
+	if s.SSH != nil {
+		return s.SSH
+	}
+	return defaults.SSH
 }
 
 func (s *StepConfig) ResolvedOnError(defaults DefaultsConfig) string {
