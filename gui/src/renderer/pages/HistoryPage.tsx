@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { RefreshCw, Terminal, ExternalLink } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { RefreshCw, Terminal, Copy, Check, Play, Filter } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { Badge } from '../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
@@ -15,8 +15,11 @@ const statusVariant: Record<string, 'default' | 'secondary' | 'destructive'> = {
   canceled: 'secondary'
 }
 
+const ALL_STATUSES = ['all', 'success', 'failure', 'running', 'canceled'] as const
+
 export function HistoryPage() {
-  const { workspacePath, runHistory, selectedRun, setRunHistory, setSelectedRun } = useStore()
+  const { workspacePath, runHistory, selectedRun, setRunHistory, setSelectedRun, setConfig, setPage } = useStore()
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const loadHistory = async () => {
     if (!workspacePath) return
@@ -36,22 +39,60 @@ export function HistoryPage() {
     )
   }
 
+  const filtered = statusFilter === 'all'
+    ? runHistory
+    : runHistory.filter((r) => r.status === statusFilter)
+
+  const statusCounts = runHistory.reduce(
+    (acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc },
+    {} as Record<string, number>
+  )
+
+  const handleRerun = async (run: RunRecord) => {
+    if (!run.config) return
+    try {
+      const content = await window.electronAPI.loadConfigFile(run.config)
+      setConfig(run.config, content)
+      setPage('execution')
+    } catch {
+      // config might not exist anymore
+    }
+  }
+
   return (
     <div className="flex flex-1 min-h-0">
       {/* Run list */}
       <div className="w-80 border-r flex flex-col">
         <div className="flex items-center justify-between border-b px-3 py-2">
-          <span className="text-sm font-medium">Runs ({runHistory.length})</span>
+          <span className="text-sm font-medium">Runs ({filtered.length})</span>
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={loadHistory}>
             <RefreshCw className="h-3.5 w-3.5" />
           </Button>
         </div>
+
+        {/* Status filter */}
+        <div className="flex items-center gap-1 px-3 py-2 border-b overflow-x-auto">
+          {ALL_STATUSES.map((s) => (
+            <Button
+              key={s}
+              size="sm"
+              variant={statusFilter === s ? 'secondary' : 'ghost'}
+              className="h-6 text-xs px-2"
+              onClick={() => setStatusFilter(s)}
+            >
+              {s === 'all' ? `All (${runHistory.length})` : `${s} (${statusCounts[s] || 0})`}
+            </Button>
+          ))}
+        </div>
+
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-1">
-            {runHistory.length === 0 ? (
-              <p className="text-xs text-muted-foreground p-2">No runs yet</p>
+            {filtered.length === 0 ? (
+              <p className="text-xs text-muted-foreground p-2">
+                {runHistory.length === 0 ? 'No runs yet' : 'No runs match filter'}
+              </p>
             ) : (
-              runHistory.map((run) => (
+              filtered.map((run) => (
                 <div
                   key={run.id}
                   className={cn(
@@ -68,10 +109,8 @@ export function HistoryPage() {
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
                     {new Date(run.started_at).toLocaleString()}
+                    {run.duration && ` — ${run.duration}`}
                   </div>
-                  {run.duration && (
-                    <div className="text-xs text-muted-foreground">{run.duration}</div>
-                  )}
                   {run.tmux && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                       <Terminal className="h-3 w-3" />
@@ -88,7 +127,7 @@ export function HistoryPage() {
       {/* Run detail */}
       <div className="flex-1 flex flex-col min-w-0">
         {selectedRun ? (
-          <RunDetail run={selectedRun} />
+          <RunDetail run={selectedRun} onRerun={handleRerun} />
         ) : (
           <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
             Select a run to view details
@@ -99,14 +138,19 @@ export function HistoryPage() {
   )
 }
 
-function RunDetail({ run }: { run: RunRecord }) {
+function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord) => void }) {
   return (
     <ScrollArea className="flex-1">
       <div className="p-6 space-y-4 max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{run.pipeline}</h2>
-          <Badge variant={statusVariant[run.status] || 'secondary'}>{run.status}</Badge>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => onRerun(run)}>
+              <Play className="h-3 w-3 mr-1" /> Re-run
+            </Button>
+            <Badge variant={statusVariant[run.status] || 'secondary'}>{run.status}</Badge>
+          </div>
         </div>
 
         {/* Info */}
@@ -126,26 +170,10 @@ function RunDetail({ run }: { run: RunRecord }) {
           </CardContent>
         </Card>
 
-        {/* SSH / tmux */}
-        {run.tmux && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Terminal className="h-4 w-4" /> tmux Session
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm space-y-2">
-              <Row label="Session" value={run.tmux.session} />
-              <Row label="Log File" value={run.tmux.log_file} />
-              <Row label="TTL" value={run.tmux.ttl} />
-              <div>
-                <span className="text-muted-foreground">Attach: </span>
-                <code className="bg-muted px-2 py-0.5 rounded text-xs">{run.tmux.attach}</code>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* tmux */}
+        {run.tmux && <TmuxCard tmux={run.tmux} />}
 
+        {/* SSH only */}
         {run.ssh && !run.tmux && (
           <Card>
             <CardContent className="pt-4 text-sm space-y-2">
@@ -184,6 +212,38 @@ function RunDetail({ run }: { run: RunRecord }) {
         )}
       </div>
     </ScrollArea>
+  )
+}
+
+function TmuxCard({ tmux }: { tmux: NonNullable<RunRecord['tmux']> }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(tmux.attach)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Terminal className="h-4 w-4" /> tmux Session
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="text-sm space-y-3">
+        <Row label="Session" value={tmux.session} />
+        <Row label="Log File" value={tmux.log_file} />
+        <Row label="TTL" value={tmux.ttl} />
+        <div className="flex items-center gap-2">
+          <code className="bg-muted px-2 py-1 rounded text-xs flex-1 truncate">{tmux.attach}</code>
+          <Button size="sm" variant="outline" className="h-7 shrink-0" onClick={handleCopy}>
+            {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+            {copied ? 'Copied' : 'Copy'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
