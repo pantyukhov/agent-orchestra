@@ -20,9 +20,13 @@ export async function runSSH(
   const env = resolveEnv(step, defaults)
   const cwd = resolveWorkingDir(step, defaults)
 
+  // Build script content and encode as base64 to avoid all quoting issues
+  const scriptContent = buildScriptContent(command, args, env, cwd)
+  const b64 = Buffer.from(scriptContent).toString('base64')
+
   const remoteCmd = sshCfg.tmux
-    ? buildTmuxCommand(command, args, env, cwd, sshCfg.tmux, step.name, runId)
-    : buildRemoteCommand(command, args, env, cwd)
+    ? buildTmuxCommandB64(b64, sshCfg.tmux, step.name, runId)
+    : `bash -c 'echo ${b64} | base64 -d | bash'`
 
   const start = Date.now()
   let outputBuf = ''
@@ -50,6 +54,8 @@ export async function runSSH(
         let stdoutBuf = ''
         let stderrBuf = ''
 
+        let resolved = false
+
         stream.on('data', (data: Buffer) => {
           stdoutBuf += data.toString()
           const lines = stdoutBuf.split('\n')
@@ -57,6 +63,23 @@ export async function runSSH(
           for (const line of lines) {
             onOutput('stdout', line)
             if (step.capture_output) outputBuf += line + '\n'
+
+            // Parse JSON output — detect when Claude pipeline is done
+            if (!resolved) {
+              try {
+                const parsed = JSON.parse(line)
+                if (parsed.type === 'result') {
+                  resolved = true
+                  setTimeout(() => {
+                    signal.removeEventListener('abort', onAbort)
+                    conn.end()
+                    resolve({ exitCode: 0, durationMs: Date.now() - start, output: step.capture_output ? outputBuf : undefined })
+                  }, 300)
+                }
+              } catch {
+                // not JSON — ignore
+              }
+            }
           }
         })
 
@@ -156,37 +179,33 @@ function convertKey(keyData: Buffer): string | Buffer {
   }
 }
 
-function buildRemoteCommand(command: string, args: string[], env?: Record<string, string>, cwd?: string): string {
-  const parts: string[] = []
+/** Build a bash script body — no quoting needed since it's written to a file or piped via base64 */
+function buildScriptContent(command: string, args: string[], env?: Record<string, string>, cwd?: string): string {
+  const lines: string[] = ['#!/bin/bash', 'set -e']
   if (env) {
     for (const [k, v] of Object.entries(env)) {
-      parts.push(`export ${k}=${shellQuote(v)};`)
+      lines.push(`export ${k}=${shellQuote(v)}`)
     }
   }
-  if (cwd) parts.push(`cd ${shellQuote(cwd)} &&`)
-  parts.push(shellQuote(command))
-  for (const a of args) parts.push(shellQuote(a))
-  return parts.join(' ')
+  if (cwd) lines.push(`cd ${shellQuote(cwd)}`)
+  // Build command with proper quoting for each arg
+  const cmdParts = [shellQuote(command), ...args.map(shellQuote)]
+  lines.push(cmdParts.join(' '))
+  return lines.join('\n') + '\n'
 }
 
-function buildTmuxCommand(command: string, args: string[], env: Record<string, string> | undefined, cwd: string | undefined, tmux: TmuxConfig, stepName?: string, runId?: string): string {
+function buildTmuxCommandB64(b64Script: string, tmux: TmuxConfig, stepName?: string, runId?: string): string {
   const baseName = tmux.session || stepName || 'agent'
   const session = runId ? `${baseName}-${runId}` : `${baseName}-${formatTimestamp()}`
   const logDir = tmux.log_dir || '/tmp/agent-orchestra'
   const logFile = `${logDir}/${session}.log`
+  const scriptFile = `${logDir}/${session}.sh`
   const ttlStr = tmux.ttl || '72h'
   const ttlSec = Math.round(parseDuration(ttlStr) / 1000)
 
-  // Encode the command as base64 to avoid all shell quoting issues.
-  // Remote decodes and writes a script, tmux runs the script.
-  const innerCmd = buildRemoteCommand(command, args, env, cwd)
-  const b64 = Buffer.from(`#!/bin/bash\n${innerCmd}\n`).toString('base64')
-  const scriptFile = `${logDir}/${session}.sh`
-
-  // nohup the TTL watchdog so it's fully detached.
   return [
     `mkdir -p ${shellQuote(logDir)}; touch ${shellQuote(logFile)};`,
-    `echo ${b64} | base64 -d > ${shellQuote(scriptFile)} && chmod +x ${shellQuote(scriptFile)};`,
+    `echo ${b64Script} | base64 -d > ${shellQuote(scriptFile)} && chmod +x ${shellQuote(scriptFile)};`,
     `tmux new-session -d -s ${shellQuote(session)} ${shellQuote(scriptFile)};`,
     `tmux pipe-pane -t ${shellQuote(session)} -o 'cat >> ${shellQuote(logFile)}';`,
     `nohup bash -c 'sleep ${ttlSec} && tmux kill-session -t ${shellQuote(session)}' >/dev/null 2>&1 &`,

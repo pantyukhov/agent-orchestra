@@ -41,9 +41,10 @@ export async function executePipeline(
     ctx.history.addStep(record, { name: '_init', status: 'success', exit_code: 0 }) // persist SSH info
   }
 
+  const hasLoop = config.loop && config.loop.count !== undefined
   const loopCount = config.loop?.count ?? 1
   const loopDelay = config.loop?.delay ? parseDuration(config.loop.delay) : 0
-  const infinite = (config.loop?.count ?? 0) === 0
+  const infinite = hasLoop && config.loop!.count === 0
 
   try {
     for (let i = 1; infinite || i <= loopCount; i++) {
