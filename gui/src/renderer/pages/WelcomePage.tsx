@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'motion/react'
 import { FolderOpen, Clock, Loader2 } from 'lucide-react'
-import { Button } from '../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
 import { useStore } from '../hooks/use-store'
 
 export function WelcomePage() {
@@ -10,7 +9,6 @@ export function WelcomePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Load recent workspaces and auto-open the last one
     window.electronAPI.getRecentWorkspaces().then(async (list) => {
       setRecent(list)
       if (!workspacePath && list.length > 0) {
@@ -40,49 +38,58 @@ export function WelcomePage() {
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/50" />
       </div>
     )
   }
 
   return (
     <div className="flex flex-1 items-center justify-center p-8">
-      <div className="w-full max-w-lg space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Agent Orchestra</h1>
-          <p className="text-muted-foreground">AI agent workflow orchestrator</p>
+      <motion.div
+        className="w-full max-w-sm space-y-8"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+      >
+        <div className="text-center space-y-1.5">
+          <h1 className="text-xl font-medium tracking-tight">Agent Orchestra</h1>
+          <p className="text-[13px] text-muted-foreground">Orchestrate AI agents with YAML pipelines</p>
         </div>
 
-        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={handleOpen}>
-          <CardHeader className="pb-3">
-            <FolderOpen className="h-8 w-8 text-muted-foreground" />
-            <CardTitle className="text-lg">Open Workspace</CardTitle>
-            <CardDescription>Open a folder with orchestrator configs</CardDescription>
-          </CardHeader>
-        </Card>
+        <button
+          onClick={handleOpen}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border/60 hover:border-border hover:bg-accent/30 transition-all duration-150 group"
+        >
+          <FolderOpen className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+          <div className="text-left">
+            <div className="text-[13px] font-medium">Open Workspace</div>
+            <div className="text-[11px] text-muted-foreground">Select a folder with configs</div>
+          </div>
+        </button>
 
         {recent.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" /> Recent Workspaces
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {recent.map((path) => (
-                <Button
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 px-1">
+              <Clock className="h-3 w-3 text-muted-foreground/60" strokeWidth={1.5} />
+              <span className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">Recent</span>
+            </div>
+            <div className="space-y-0.5">
+              {recent.map((path, i) => (
+                <motion.button
                   key={path}
-                  variant="ghost"
-                  className="w-full justify-start text-sm font-mono h-8"
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-[13px] text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-100 font-mono truncate"
                   onClick={() => openWorkspace(path)}
                 >
-                  {path}
-                </Button>
+                  {path.replace(/.*\//, '~/')}
+                </motion.button>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }

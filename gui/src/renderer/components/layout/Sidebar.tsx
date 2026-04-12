@@ -1,7 +1,6 @@
 import { Settings, Play, FileText, Home, History } from 'lucide-react'
+import { motion } from 'motion/react'
 import { cn } from '../../lib/utils'
-import { Button } from '../ui/button'
-import { Badge } from '../ui/badge'
 import { useStore } from '../../hooks/use-store'
 
 const nav = [
@@ -16,26 +15,34 @@ export function Sidebar() {
   const { page, setPage, processStatus, dirty } = useStore()
 
   return (
-    <div className="flex h-full w-14 flex-col items-center border-r bg-muted/40 pt-12 pb-4 gap-2">
+    <div className="flex h-full w-12 flex-col items-center border-r border-border/50 bg-background/80 backdrop-blur-xl pt-11 pb-3 gap-1">
       {nav.map((item) => (
-        <Button
+        <button
           key={item.id}
-          variant={page === item.id ? 'secondary' : 'ghost'}
-          size="icon"
-          className={cn('relative h-10 w-10', page === item.id && 'bg-secondary')}
+          className={cn(
+            'relative flex items-center justify-center w-8 h-8 rounded-lg transition-colors duration-150',
+            page === item.id
+              ? 'bg-accent text-foreground'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+          )}
           onClick={() => setPage(item.id)}
           title={item.label}
         >
-          <item.icon className="h-5 w-5" />
+          <item.icon className="h-[18px] w-[18px]" strokeWidth={1.5} />
+          {page === item.id && (
+            <motion.div
+              layoutId="sidebar-indicator"
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-[1px] w-[3px] h-4 rounded-full bg-foreground/70"
+              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+            />
+          )}
           {item.id === 'config' && dirty && (
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-orange-500" />
+            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-orange-400" />
           )}
           {item.id === 'execution' && processStatus === 'running' && (
-            <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-green-500">
-              !
-            </Badge>
+            <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
           )}
-        </Button>
+        </button>
       ))}
     </div>
   )

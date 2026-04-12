@@ -1,4 +1,5 @@
 import React from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Sidebar } from './components/layout/Sidebar'
 import { Header } from './components/layout/Header'
 import { WelcomePage } from './pages/WelcomePage'
@@ -31,17 +32,15 @@ class ErrorBoundary extends React.Component<
       return (
         <div className="flex flex-1 items-center justify-center p-8">
           <div className="max-w-lg space-y-4">
-            <h2 className="text-lg font-bold text-destructive">Something went wrong</h2>
-            <pre className="bg-zinc-950 text-red-400 p-4 rounded text-xs overflow-auto max-h-60 whitespace-pre-wrap">
+            <h2 className="text-sm font-medium text-destructive">Something went wrong</h2>
+            <pre className="bg-muted p-4 rounded-lg text-xs overflow-auto max-h-60 whitespace-pre-wrap text-muted-foreground">
               {this.state.error.message}
-              {'\n\n'}
-              {this.state.error.stack}
             </pre>
             <button
-              className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => this.setState({ error: null })}
             >
-              Try Again
+              Try again
             </button>
           </div>
         </div>
@@ -56,12 +55,23 @@ export default function App() {
   const Page = pages[page]
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
       <Sidebar />
       <div className="flex flex-1 flex-col min-w-0">
         <Header />
         <ErrorBoundary key={page}>
-          <Page />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={page}
+              className="flex flex-1 flex-col min-h-0"
+              initial={{ opacity: 0, y: 2 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -2 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
+              <Page />
+            </motion.div>
+          </AnimatePresence>
         </ErrorBoundary>
       </div>
     </div>
