@@ -1,8 +1,5 @@
 import { useEffect, useState } from 'react'
 import { RefreshCw, FolderOpen, Search, Copy, Check, X } from 'lucide-react'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { ScrollArea } from '../components/ui/scroll-area'
 import { useStore } from '../hooks/use-store'
 import { cn } from '../lib/utils'
 
@@ -55,7 +52,7 @@ export function LogsPage() {
 
   if (!workspacePath) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
+      <div className="flex flex-1 items-center justify-center text-muted-foreground text-[13px]">
         Open a workspace first
       </div>
     )
@@ -98,29 +95,32 @@ export function LogsPage() {
   return (
     <div className="flex flex-1 min-h-0">
       {/* File list */}
-      <div className="w-72 border-r flex flex-col">
-        <div className="flex items-center justify-between border-b px-3 py-2">
-          <span className="text-sm font-medium">Logs ({logFiles.length})</span>
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={loadFiles}>
+      <div className="w-72 border-r border-border/40 flex flex-col">
+        <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
+          <span className="text-[13px] font-medium text-foreground/80">Logs ({logFiles.length})</span>
+          <button
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100"
+            onClick={loadFiles}
+          >
             <RefreshCw className="h-3.5 w-3.5" />
-          </Button>
+          </button>
         </div>
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-auto">
           <div className="p-2 space-y-1">
             {logFiles.length === 0 ? (
-              <p className="text-xs text-muted-foreground p-2">No log files found</p>
+              <p className="text-[11px] text-muted-foreground/60 p-2">No log files found</p>
             ) : (
               logFiles.map((file) => (
                 <div
                   key={file.path}
                   className={cn(
-                    'rounded-md px-3 py-2 cursor-pointer text-xs hover:bg-accent transition-colors',
-                    selectedLog === file.path && 'bg-accent'
+                    'rounded-md px-3 py-2 cursor-pointer text-[11px] hover:bg-foreground/[0.04] transition-colors duration-100',
+                    selectedLog === file.path && 'bg-foreground/[0.06]'
                   )}
                   onClick={() => handleSelect(file.path)}
                 >
-                  <div className="font-mono truncate">{file.name}</div>
-                  <div className="flex justify-between text-muted-foreground mt-1">
+                  <div className="font-mono truncate text-foreground/80">{file.name}</div>
+                  <div className="flex justify-between text-muted-foreground/60 mt-1">
                     <span>{formatSize(file.size)}</span>
                     <span>{formatDate(file.mtime)}</span>
                   </div>
@@ -128,7 +128,7 @@ export function LogsPage() {
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Log content */}
@@ -136,25 +136,25 @@ export function LogsPage() {
         {selectedLog ? (
           <>
             {/* Toolbar */}
-            <div className="flex items-center gap-2 border-b px-4 py-2">
-              <span className="text-xs font-mono truncate">{selectedLog.split('/').pop()}</span>
+            <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
+              <span className="text-[11px] font-mono truncate text-muted-foreground/80">{selectedLog.split('/').pop()}</span>
               <div className="flex-1" />
               {/* Search */}
               <div className="relative w-48">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                <Input
-                  className="h-7 text-xs pl-7 pr-7"
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/60" />
+                <input
+                  className="w-full h-7 pl-7 pr-7 text-[11px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
                   placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
                 {search && (
                   <>
-                    <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                    <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/60">
                       {matchCount}
                     </span>
                     <button
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-100"
                       onClick={() => setSearch('')}
                     >
                       <X className="h-3 w-3" />
@@ -162,21 +162,28 @@ export function LogsPage() {
                   </>
                 )}
               </div>
-              <Button size="sm" variant="ghost" className="h-7" onClick={handleCopy} disabled={!logContent}>
-                {copied ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+              <button
+                className="px-2 py-1 text-[11px] rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+                onClick={handleCopy}
+                disabled={!logContent}
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {copied ? 'Copied' : 'Copy'}
-              </Button>
-              <Button size="sm" variant="ghost" className="h-7" onClick={() => window.electronAPI.showInFolder(selectedLog)}>
-                <FolderOpen className="h-3.5 w-3.5 mr-1" /> Reveal
-              </Button>
+              </button>
+              <button
+                className="px-2 py-1 text-[11px] rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                onClick={() => window.electronAPI.showInFolder(selectedLog)}
+              >
+                <FolderOpen className="h-3.5 w-3.5" /> Reveal
+              </button>
             </div>
             {/* Content */}
-            <div className="flex-1 overflow-auto bg-zinc-950 p-4 font-mono text-xs text-zinc-300 leading-relaxed">
+            <div className="flex-1 overflow-auto bg-[#0d0f12] p-4 font-mono text-[11px] text-zinc-300 leading-relaxed">
               {renderContent()}
             </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center text-muted-foreground text-sm">
+          <div className="flex flex-1 items-center justify-center text-muted-foreground/60 text-[13px]">
             Select a log file to view
           </div>
         )}

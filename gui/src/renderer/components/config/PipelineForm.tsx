@@ -1,8 +1,3 @@
-import { Input } from '../ui/input'
-import { Label } from '../ui/label'
-import { Button } from '../ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Separator } from '../ui/separator'
 import { Plus, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { StepForm } from './StepForm'
@@ -28,12 +23,12 @@ function TransitionFields({
   const t = transition || {}
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-medium text-muted-foreground/80">{label}</p>
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
-          <Label className="text-xs">Remove Labels</Label>
-          <Input
-            className="h-8 text-xs"
+          <label className="text-[11px] text-muted-foreground/60">Remove Labels</label>
+          <input
+            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
             value={(t.remove_labels || []).join(', ')}
             onChange={(e) =>
               onChange({ ...t, remove_labels: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
@@ -41,9 +36,9 @@ function TransitionFields({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Add Labels</Label>
-          <Input
-            className="h-8 text-xs"
+          <label className="text-[11px] text-muted-foreground/60">Add Labels</label>
+          <input
+            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
             value={(t.add_labels || []).join(', ')}
             onChange={(e) =>
               onChange({ ...t, add_labels: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
@@ -92,43 +87,49 @@ export function PipelineForm({ name, pipeline, onChange, onRemove, onRename }: P
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-3 flex flex-row items-center gap-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-        {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        <CardTitle className="text-base flex-1">{name}</CardTitle>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
+    <div className="rounded-lg border border-border/40">
+      <div
+        className="flex items-center gap-2 px-4 py-3 cursor-pointer border-b border-border/40 hover:bg-foreground/[0.02] transition-colors duration-100"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        <span className="text-[13px] font-medium text-foreground/80 flex-1">{name}</span>
+        <button
+          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-foreground/[0.04] transition-colors duration-100"
           onClick={(e) => {
             e.stopPropagation()
             onRemove(name)
           }}
         >
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
-      </CardHeader>
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
 
       {expanded && (
-        <CardContent className="space-y-4">
+        <div className="px-4 py-3 space-y-4">
           <div className="space-y-1">
-            <Label>Pipeline Name</Label>
+            <label className="text-[12px] text-muted-foreground/80">Pipeline Name</label>
             <div className="flex gap-2">
-              <Input
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
               />
               {editName !== name && (
-                <Button size="sm" onClick={() => { onRename(name, editName) }}>
+                <button
+                  className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-foreground bg-foreground/[0.06] hover:bg-foreground/[0.1] transition-colors duration-100"
+                  onClick={() => { onRename(name, editName) }}
+                >
                   Rename
-                </Button>
+                </button>
               )}
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label>Stop Labels (comma-separated)</Label>
-            <Input
+            <label className="text-[12px] text-muted-foreground/80">Stop Labels (comma-separated)</label>
+            <input
+              className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
               value={(pipeline.stop_labels || []).join(', ')}
               onChange={(e) =>
                 onChange(name, {
@@ -139,8 +140,8 @@ export function PipelineForm({ name, pipeline, onChange, onRemove, onRename }: P
             />
           </div>
 
-          <Separator />
-          <p className="text-sm font-medium">State Transitions</p>
+          <div className="h-px bg-border/40" />
+          <p className="text-[13px] font-medium text-foreground/80">State Transitions</p>
           <div className="space-y-3">
             <TransitionFields label="On Start" transition={pipeline.state?.on_start} onChange={(t) => updateState('on_start', t)} />
             <TransitionFields label="On Success" transition={pipeline.state?.on_success} onChange={(t) => updateState('on_success', t)} />
@@ -148,16 +149,22 @@ export function PipelineForm({ name, pipeline, onChange, onRemove, onRename }: P
             <TransitionFields label="On Needs Human" transition={pipeline.state?.on_needs_human} onChange={(t) => updateState('on_needs_human', t)} />
           </div>
 
-          <Separator />
+          <div className="h-px bg-border/40" />
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Steps ({pipeline.steps.length})</p>
+            <p className="text-[13px] font-medium text-foreground/80">Steps ({pipeline.steps.length})</p>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => addStep('agent')}>
-                <Plus className="h-3 w-3 mr-1" /> Agent Step
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => addStep('action')}>
-                <Plus className="h-3 w-3 mr-1" /> Action
-              </Button>
+              <button
+                className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                onClick={() => addStep('agent')}
+              >
+                <Plus className="h-3 w-3" /> Agent Step
+              </button>
+              <button
+                className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                onClick={() => addStep('action')}
+              >
+                <Plus className="h-3 w-3" /> Action
+              </button>
             </div>
           </div>
           <div className="space-y-3">
@@ -165,8 +172,8 @@ export function PipelineForm({ name, pipeline, onChange, onRemove, onRename }: P
               <StepForm key={i} step={step} index={i} total={pipeline.steps.length} onChange={updateStep} onRemove={removeStep} onMove={moveStep} />
             ))}
           </div>
-        </CardContent>
+        </div>
       )}
-    </Card>
+    </div>
   )
 }

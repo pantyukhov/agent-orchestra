@@ -1,14 +1,6 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { Save, Plus, FileText, ArrowLeft, Loader2, Play, Code, FormInput } from 'lucide-react'
 import yaml from 'js-yaml'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Switch } from '../components/ui/switch'
-import { ScrollArea } from '../components/ui/scroll-area'
-import { Separator } from '../components/ui/separator'
-import { Badge } from '../components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { TriggerForm } from '../components/config/TriggerForm'
 import { PipelineForm } from '../components/config/PipelineForm'
 import { StepForm } from '../components/config/StepForm'
@@ -62,7 +54,7 @@ export function ConfigEditorPage() {
 
   if (!workspacePath) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
+      <div className="flex flex-1 items-center justify-center text-muted-foreground text-[13px]">
         Open a workspace first
       </div>
     )
@@ -96,44 +88,50 @@ export function ConfigEditorPage() {
   if (!config || !configPath) {
     return (
       <div className="flex flex-1 flex-col">
-        <div className="border-b px-4 py-2 flex items-center gap-2">
-          <span className="text-sm font-medium">Configs</span>
-          <span className="text-xs text-muted-foreground font-mono flex-1 truncate">{workspacePath}</span>
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        <div className="border-b border-border/40 px-4 py-2 flex items-center gap-2">
+          <span className="text-[13px] font-medium text-foreground/80">Configs</span>
+          <span className="text-[11px] text-muted-foreground/60 font-mono flex-1 truncate">{workspacePath}</span>
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/60" />}
           <div className="flex gap-1">
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleNewConfig('pipeline')}>
-              <Plus className="h-3 w-3 mr-1" /> Pipeline
-            </Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleNewConfig('orchestrator')}>
-              <Plus className="h-3 w-3 mr-1" /> Orchestrator
-            </Button>
+            <button
+              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              onClick={() => handleNewConfig('pipeline')}
+            >
+              <Plus className="h-3 w-3" /> Pipeline
+            </button>
+            <button
+              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              onClick={() => handleNewConfig('orchestrator')}
+            >
+              <Plus className="h-3 w-3" /> Orchestrator
+            </button>
           </div>
         </div>
-        <ScrollArea className="flex-1">
+        <div className="flex-1 overflow-auto">
           <div className="p-4 space-y-2 max-w-xl">
             {workspaceConfigs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No YAML configs found in workspace. Create one above.</p>
+              <p className="text-[13px] text-muted-foreground/60">No YAML configs found in workspace. Create one above.</p>
             ) : (
               workspaceConfigs.map((p) => (
-                <Card
+                <div
                   key={p}
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  className="rounded-lg border border-border/40 cursor-pointer hover:border-foreground/20 transition-colors duration-100"
                   onClick={() => handleSelectConfig(p)}
                 >
-                  <CardHeader className="py-3 px-4 flex flex-row items-center gap-3">
-                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <CardTitle className="text-sm font-mono flex-1">
+                  <div className="py-3 px-4 flex items-center gap-3">
+                    <FileText className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+                    <span className="text-[13px] font-mono flex-1 text-foreground/80">
                       {p.replace(workspacePath + '/', '')}
-                    </CardTitle>
-                    <Badge variant="outline" className="text-[10px] shrink-0">
+                    </span>
+                    <span className="px-1.5 py-0.5 text-[10px] rounded-md border border-border/60 text-muted-foreground/60">
                       {p.includes('orchestrat') ? 'orch' : 'pipe'}
-                    </Badge>
-                  </CardHeader>
-                </Card>
+                    </span>
+                  </div>
+                </div>
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     )
   }
@@ -148,33 +146,40 @@ export function ConfigEditorPage() {
   }
 
   const toolbar = (
-    <div className="flex items-center gap-2 border-b px-4 py-2">
-      <Button size="sm" variant="ghost" onClick={handleBack}>
-        <ArrowLeft className="h-4 w-4 mr-1" /> Configs
-      </Button>
-      <Separator orientation="vertical" className="h-5" />
-      <Button size="sm" onClick={handleSave} disabled={!dirty || saveStatus === 'saving'}>
+    <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
+      <button
+        className="px-2 py-1 text-[12px] rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+        onClick={handleBack}
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Configs
+      </button>
+      <div className="w-px h-5 bg-border/40" />
+      <button
+        className="px-2.5 py-1 text-[12px] rounded-md bg-foreground/[0.06] text-foreground hover:bg-foreground/[0.1] transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+        onClick={handleSave}
+        disabled={!dirty || saveStatus === 'saving'}
+      >
         {saveStatus === 'saving' ? (
-          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
-          <Save className="h-4 w-4 mr-1" />
+          <Save className="h-3.5 w-3.5" />
         )}
         Save
-      </Button>
-      {saveStatus === 'saved' && <Badge variant="secondary" className="text-xs">Saved</Badge>}
-      {saveStatus === 'error' && <Badge variant="destructive" className="text-xs">Save failed</Badge>}
-      <span className="text-xs text-muted-foreground font-mono flex-1 truncate">
+      </button>
+      {saveStatus === 'saved' && <span className="px-1.5 py-0.5 text-[11px] rounded-md bg-foreground/[0.06] text-muted-foreground">Saved</span>}
+      {saveStatus === 'error' && <span className="px-1.5 py-0.5 text-[11px] rounded-md bg-destructive/10 text-destructive">Save failed</span>}
+      <span className="text-[11px] text-muted-foreground/60 font-mono flex-1 truncate">
         {configPath.replace(workspacePath + '/', '')}
       </span>
-      <Badge variant="outline" className="text-xs">
+      <span className="px-1.5 py-0.5 text-[10px] rounded-md border border-border/60 text-muted-foreground/60">
         {config.orchestrator ? 'orchestrator' : 'pipeline'}
-      </Badge>
-      <Separator orientation="vertical" className="h-5" />
-      <div className="flex bg-muted rounded-md p-0.5">
-        <Button
-          size="sm"
-          variant={editMode === 'form' ? 'secondary' : 'ghost'}
-          className="h-6 px-2 text-xs"
+      </span>
+      <div className="w-px h-5 bg-border/40" />
+      <div className="flex bg-foreground/[0.04] rounded-md p-0.5">
+        <button
+          className={`h-6 px-2 text-[11px] rounded-[5px] inline-flex items-center gap-1 transition-colors duration-100 ${
+            editMode === 'form' ? 'bg-foreground/[0.08] text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
           onClick={() => {
             if (editMode === 'yaml') {
               // Apply YAML changes before switching
@@ -192,24 +197,27 @@ export function ConfigEditorPage() {
             setEditMode('form')
           }}
         >
-          <FormInput className="h-3 w-3 mr-1" /> Form
-        </Button>
-        <Button
-          size="sm"
-          variant={editMode === 'yaml' ? 'secondary' : 'ghost'}
-          className="h-6 px-2 text-xs"
+          <FormInput className="h-3 w-3" /> Form
+        </button>
+        <button
+          className={`h-6 px-2 text-[11px] rounded-[5px] inline-flex items-center gap-1 transition-colors duration-100 ${
+            editMode === 'yaml' ? 'bg-foreground/[0.08] text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
           onClick={() => {
             setYamlText(yaml.dump(config, { indent: 2, lineWidth: -1, noRefs: true }))
             setYamlError(null)
             setEditMode('yaml')
           }}
         >
-          <Code className="h-3 w-3 mr-1" /> YAML
-        </Button>
+          <Code className="h-3 w-3" /> YAML
+        </button>
       </div>
-      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleRun}>
-        <Play className="h-3.5 w-3.5 mr-1" /> Run
-      </Button>
+      <button
+        className="px-2.5 py-1 text-[12px] rounded-md bg-green-600/90 text-white hover:bg-green-600 transition-colors duration-100 inline-flex items-center gap-1"
+        onClick={handleRun}
+      >
+        <Play className="h-3 w-3" /> Run
+      </button>
     </div>
   )
 
@@ -262,7 +270,7 @@ export function ConfigEditorPage() {
   return (
     <div className="flex flex-1 flex-col">
       {toolbar}
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
+      <div className="flex flex-1 items-center justify-center text-muted-foreground text-[13px]">
         Unknown config format — switch to YAML mode to edit
       </div>
     </div>
@@ -314,34 +322,40 @@ function PipelineEditor({
   }
 
   return (
-    <ScrollArea className="flex-1">
+    <div className="flex-1 overflow-auto">
       <div className="p-6 space-y-6 max-w-3xl">
         {/* General */}
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">General</h2>
+          <h2 className="text-[13px] font-medium text-foreground/80">General</h2>
           <div className="space-y-1">
-            <Label>Name</Label>
-            <Input value={pipe.name} onChange={(e) => updatePipe({ name: e.target.value })} />
+            <label className="text-[12px] text-muted-foreground/80">Name</label>
+            <input
+              className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+              value={pipe.name}
+              onChange={(e) => updatePipe({ name: e.target.value })}
+            />
           </div>
         </section>
 
-        <Separator />
+        <div className="h-px bg-border/40" />
 
         {/* Defaults */}
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Defaults</h2>
+          <h2 className="text-[13px] font-medium text-foreground/80">Defaults</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Command</Label>
-              <Input
+              <label className="text-[12px] text-muted-foreground/80">Command</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
                 value={pipe.defaults?.command || ''}
                 onChange={(e) => updateDefaults({ command: e.target.value })}
                 placeholder="claude"
               />
             </div>
             <div className="space-y-1">
-              <Label>Timeout</Label>
-              <Input
+              <label className="text-[12px] text-muted-foreground/80">Timeout</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
                 value={pipe.defaults?.timeout || ''}
                 onChange={(e) => updateDefaults({ timeout: e.target.value })}
                 placeholder="30m"
@@ -349,8 +363,9 @@ function PipelineEditor({
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Args (comma-separated)</Label>
-            <Input
+            <label className="text-[12px] text-muted-foreground/80">Args (comma-separated)</label>
+            <input
+              className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
               value={(pipe.defaults?.args || []).join(', ')}
               onChange={(e) =>
                 updateDefaults({ args: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
@@ -360,23 +375,25 @@ function PipelineEditor({
           </div>
         </section>
 
-        <Separator />
+        <div className="h-px bg-border/40" />
 
         {/* Loop */}
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Loop</h2>
+          <h2 className="text-[13px] font-medium text-foreground/80">Loop</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Count (0 = infinite)</Label>
-              <Input
+              <label className="text-[12px] text-muted-foreground/80">Count (0 = infinite)</label>
+              <input
                 type="number"
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
                 value={pipe.loop?.count ?? 0}
                 onChange={(e) => updatePipe({ loop: { ...pipe.loop, count: parseInt(e.target.value) || 0 } })}
               />
             </div>
             <div className="space-y-1">
-              <Label>Delay between iterations</Label>
-              <Input
+              <label className="text-[12px] text-muted-foreground/80">Delay between iterations</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
                 value={pipe.loop?.delay || ''}
                 onChange={(e) => updatePipe({ loop: { ...pipe.loop, delay: e.target.value } })}
                 placeholder="5s"
@@ -385,7 +402,7 @@ function PipelineEditor({
           </div>
         </section>
 
-        <Separator />
+        <div className="h-px bg-border/40" />
 
         {/* SSH */}
         {pipe.defaults?.ssh && (
@@ -394,34 +411,39 @@ function PipelineEditor({
               ssh={pipe.defaults.ssh}
               onChange={(ssh) => updateDefaults({ ssh })}
             />
-            <Separator />
+            <div className="h-px bg-border/40" />
           </>
         )}
 
         {!pipe.defaults?.ssh && (
           <>
-            <Button
-              size="sm"
-              variant="outline"
+            <button
+              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
               onClick={() => updateDefaults({ ssh: { host: '', user: '' } })}
             >
-              <Plus className="h-4 w-4 mr-1" /> Add SSH Remote Execution
-            </Button>
-            <Separator />
+              <Plus className="h-3.5 w-3.5" /> Add SSH Remote Execution
+            </button>
+            <div className="h-px bg-border/40" />
           </>
         )}
 
         {/* Steps */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Steps ({pipe.steps.length})</h2>
+            <h2 className="text-[13px] font-medium text-foreground/80">Steps ({pipe.steps.length})</h2>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => addStep('agent')}>
-                <Plus className="h-3 w-3 mr-1" /> Agent Step
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => addStep('action')}>
-                <Plus className="h-3 w-3 mr-1" /> Action
-              </Button>
+              <button
+                className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                onClick={() => addStep('agent')}
+              >
+                <Plus className="h-3 w-3" /> Agent Step
+              </button>
+              <button
+                className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                onClick={() => addStep('action')}
+              >
+                <Plus className="h-3 w-3" /> Action
+              </button>
             </div>
           </div>
           <div className="space-y-3">
@@ -431,7 +453,7 @@ function PipelineEditor({
           </div>
         </section>
       </div>
-    </ScrollArea>
+    </div>
   )
 }
 
@@ -447,56 +469,99 @@ function SSHSection({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">SSH Remote Execution</h2>
-        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => onChange(undefined)}>
+        <h2 className="text-[13px] font-medium text-foreground/80">SSH Remote Execution</h2>
+        <button
+          className="px-2 py-1 text-[12px] rounded-md text-destructive/80 hover:text-destructive hover:bg-foreground/[0.04] transition-colors duration-100"
+          onClick={() => onChange(undefined)}
+        >
           Remove
-        </Button>
+        </button>
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-1">
-          <Label>Host</Label>
-          <Input value={ssh.host || ''} onChange={(e) => onChange({ ...ssh, host: e.target.value })} placeholder="192.168.1.100" />
+          <label className="text-[12px] text-muted-foreground/80">Host</label>
+          <input
+            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+            value={ssh.host || ''}
+            onChange={(e) => onChange({ ...ssh, host: e.target.value })}
+            placeholder="192.168.1.100"
+          />
         </div>
         <div className="space-y-1">
-          <Label>User</Label>
-          <Input value={ssh.user || ''} onChange={(e) => onChange({ ...ssh, user: e.target.value })} placeholder="deploy" />
+          <label className="text-[12px] text-muted-foreground/80">User</label>
+          <input
+            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+            value={ssh.user || ''}
+            onChange={(e) => onChange({ ...ssh, user: e.target.value })}
+            placeholder="deploy"
+          />
         </div>
         <div className="space-y-1">
-          <Label>Port</Label>
-          <Input type="number" value={ssh.port || 22} onChange={(e) => onChange({ ...ssh, port: parseInt(e.target.value) || 22 })} />
+          <label className="text-[12px] text-muted-foreground/80">Port</label>
+          <input
+            type="number"
+            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+            value={ssh.port || 22}
+            onChange={(e) => onChange({ ...ssh, port: parseInt(e.target.value) || 22 })}
+          />
         </div>
       </div>
       <div className="space-y-1">
-        <Label>Key File</Label>
-        <Input value={ssh.key_file || ''} onChange={(e) => onChange({ ...ssh, key_file: e.target.value })} placeholder="~/.ssh/id_ed25519 (auto-detected if empty)" />
+        <label className="text-[12px] text-muted-foreground/80">Key File</label>
+        <input
+          className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+          value={ssh.key_file || ''}
+          onChange={(e) => onChange({ ...ssh, key_file: e.target.value })}
+          placeholder="~/.ssh/id_ed25519 (auto-detected if empty)"
+        />
       </div>
       {/* tmux */}
-      <div className="rounded-md border p-3 space-y-3">
+      <div className="rounded-md border border-border/40 p-3 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">tmux</p>
+          <p className="text-[13px] font-medium text-foreground/80">tmux</p>
           {!ssh.tmux ? (
-            <Button size="sm" variant="outline" onClick={() => onChange({ ...ssh, tmux: { session: '', ttl: '72h' } })}>
+            <button
+              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100"
+              onClick={() => onChange({ ...ssh, tmux: { session: '', ttl: '72h' } })}
+            >
               Enable
-            </Button>
+            </button>
           ) : (
-            <Button size="sm" variant="ghost" className="text-destructive text-xs" onClick={() => onChange({ ...ssh, tmux: undefined })}>
+            <button
+              className="px-2 py-1 text-[11px] rounded-md text-destructive/80 hover:text-destructive hover:bg-foreground/[0.04] transition-colors duration-100"
+              onClick={() => onChange({ ...ssh, tmux: undefined })}
+            >
               Disable
-            </Button>
+            </button>
           )}
         </div>
         {ssh.tmux && (
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Session Name</Label>
-              <Input className="h-8 text-xs" value={ssh.tmux.session || ''} onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, session: e.target.value } })} placeholder="auto from step name" />
+              <label className="text-[11px] text-muted-foreground/60">Session Name</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={ssh.tmux.session || ''}
+                onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, session: e.target.value } })}
+                placeholder="auto from step name"
+              />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">TTL</Label>
-              <Input className="h-8 text-xs" value={ssh.tmux.ttl || '72h'} onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, ttl: e.target.value } })} />
+              <label className="text-[11px] text-muted-foreground/60">TTL</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={ssh.tmux.ttl || '72h'}
+                onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, ttl: e.target.value } })}
+              />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Log Dir</Label>
-              <Input className="h-8 text-xs" value={ssh.tmux.log_dir || ''} onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, log_dir: e.target.value } })} placeholder="/tmp/agent-orchestra" />
+              <label className="text-[11px] text-muted-foreground/60">Log Dir</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={ssh.tmux.log_dir || ''}
+                onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, log_dir: e.target.value } })}
+                placeholder="/tmp/agent-orchestra"
+              />
             </div>
           </div>
         )}
@@ -574,46 +639,64 @@ function OrchestratorEditor({
   }
 
   return (
-    <ScrollArea className="flex-1">
+    <div className="flex-1 overflow-auto">
       <div className="p-6 space-y-6 max-w-3xl">
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">General</h2>
+          <h2 className="text-[13px] font-medium text-foreground/80">General</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Name</Label>
-              <Input value={orch.name} onChange={(e) => updateOrch({ name: e.target.value })} />
+              <label className="text-[12px] text-muted-foreground/80">Name</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={orch.name}
+                onChange={(e) => updateOrch({ name: e.target.value })}
+              />
             </div>
             <div className="space-y-1">
-              <Label>Project Root</Label>
-              <Input value={orch.project_root || '.'} onChange={(e) => updateOrch({ project_root: e.target.value })} />
+              <label className="text-[12px] text-muted-foreground/80">Project Root</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={orch.project_root || '.'}
+                onChange={(e) => updateOrch({ project_root: e.target.value })}
+              />
             </div>
           </div>
         </section>
 
-        <Separator />
+        <div className="h-px bg-border/40" />
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Defaults</h2>
+          <h2 className="text-[13px] font-medium text-foreground/80">Defaults</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <Label>Command</Label>
-              <Input value={orch.defaults?.command || ''} onChange={(e) => updateOrch({ defaults: { ...orch.defaults, command: e.target.value } })} />
+              <label className="text-[12px] text-muted-foreground/80">Command</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={orch.defaults?.command || ''}
+                onChange={(e) => updateOrch({ defaults: { ...orch.defaults, command: e.target.value } })}
+              />
             </div>
             <div className="space-y-1">
-              <Label>Timeout</Label>
-              <Input value={orch.defaults?.timeout || ''} onChange={(e) => updateOrch({ defaults: { ...orch.defaults, timeout: e.target.value } })} placeholder="30m" />
+              <label className="text-[12px] text-muted-foreground/80">Timeout</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={orch.defaults?.timeout || ''}
+                onChange={(e) => updateOrch({ defaults: { ...orch.defaults, timeout: e.target.value } })}
+                placeholder="30m"
+              />
             </div>
           </div>
           <div className="space-y-1">
-            <Label>Args (comma-separated)</Label>
-            <Input
+            <label className="text-[12px] text-muted-foreground/80">Args (comma-separated)</label>
+            <input
+              className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
               value={(orch.defaults?.args || []).join(', ')}
               onChange={(e) => updateOrch({ defaults: { ...orch.defaults, args: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } })}
             />
           </div>
         </section>
 
-        <Separator />
+        <div className="h-px bg-border/40" />
 
         {/* SSH for orchestrator defaults */}
         {orch.defaults?.ssh ? (
@@ -622,49 +705,80 @@ function OrchestratorEditor({
               ssh={orch.defaults.ssh}
               onChange={(ssh) => updateOrch({ defaults: { ...orch.defaults, ssh } })}
             />
-            <Separator />
+            <div className="h-px bg-border/40" />
           </>
         ) : (
           <>
-            <Button
-              size="sm"
-              variant="outline"
+            <button
+              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
               onClick={() => updateOrch({ defaults: { ...orch.defaults, ssh: { host: '', user: '' } } })}
             >
-              <Plus className="h-4 w-4 mr-1" /> Add SSH Remote Execution
-            </Button>
-            <Separator />
+              <Plus className="h-3.5 w-3.5" /> Add SSH Remote Execution
+            </button>
+            <div className="h-px bg-border/40" />
           </>
         )}
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">Runtime</h2>
+          <h2 className="text-[13px] font-medium text-foreground/80">Runtime</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1">
-              <Label>Max Concurrency</Label>
-              <Input type="number" value={orch.concurrency?.max || 1} onChange={(e) => updateOrch({ concurrency: { max: parseInt(e.target.value) || 1 } })} />
+              <label className="text-[12px] text-muted-foreground/80">Max Concurrency</label>
+              <input
+                type="number"
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={orch.concurrency?.max || 1}
+                onChange={(e) => updateOrch({ concurrency: { max: parseInt(e.target.value) || 1 } })}
+              />
             </div>
             <div className="space-y-1">
-              <Label>Log Directory</Label>
-              <Input value={orch.logging?.dir || './logs'} onChange={(e) => updateOrch({ logging: { ...orch.logging!, dir: e.target.value, per_task: orch.logging?.per_task ?? true } })} />
+              <label className="text-[12px] text-muted-foreground/80">Log Directory</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={orch.logging?.dir || './logs'}
+                onChange={(e) => updateOrch({ logging: { ...orch.logging!, dir: e.target.value, per_task: orch.logging?.per_task ?? true } })}
+              />
             </div>
             <div className="space-y-1">
-              <Label>State File</Label>
-              <Input value={orch.persistence?.file || ''} onChange={(e) => updateOrch({ persistence: { file: e.target.value } })} />
+              <label className="text-[12px] text-muted-foreground/80">State File</label>
+              <input
+                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                value={orch.persistence?.file || ''}
+                onChange={(e) => updateOrch({ persistence: { file: e.target.value } })}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Switch checked={orch.logging?.per_task ?? true} onCheckedChange={(v) => updateOrch({ logging: { dir: orch.logging?.dir || './logs', per_task: v } })} />
-            <Label>Per-task logging</Label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={orch.logging?.per_task ?? true}
+              onClick={() => updateOrch({ logging: { dir: orch.logging?.dir || './logs', per_task: !(orch.logging?.per_task ?? true) } })}
+              className={`relative inline-flex h-[18px] w-[32px] shrink-0 cursor-pointer rounded-full transition-colors duration-150 ${
+                (orch.logging?.per_task ?? true) ? 'bg-foreground/80' : 'bg-foreground/10'
+              }`}
+            >
+              <span
+                className={`pointer-events-none block h-[14px] w-[14px] rounded-full bg-background shadow-sm transition-transform duration-150 translate-y-[2px] ${
+                  (orch.logging?.per_task ?? true) ? 'translate-x-[16px]' : 'translate-x-[2px]'
+                }`}
+              />
+            </button>
+            <label className="text-[12px] text-muted-foreground/80">Per-task logging</label>
           </div>
         </section>
 
-        <Separator />
+        <div className="h-px bg-border/40" />
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Triggers ({orch.triggers.length})</h2>
-            <Button size="sm" variant="outline" onClick={addTrigger}><Plus className="h-4 w-4 mr-1" /> Add Trigger</Button>
+            <h2 className="text-[13px] font-medium text-foreground/80">Triggers ({orch.triggers.length})</h2>
+            <button
+              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              onClick={addTrigger}
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Trigger
+            </button>
           </div>
           <div className="space-y-4">
             {orch.triggers.map((trigger, i) => (
@@ -673,12 +787,17 @@ function OrchestratorEditor({
           </div>
         </section>
 
-        <Separator />
+        <div className="h-px bg-border/40" />
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Pipelines ({Object.keys(orch.pipelines).length})</h2>
-            <Button size="sm" variant="outline" onClick={addPipeline}><Plus className="h-4 w-4 mr-1" /> Add Pipeline</Button>
+            <h2 className="text-[13px] font-medium text-foreground/80">Pipelines ({Object.keys(orch.pipelines).length})</h2>
+            <button
+              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              onClick={addPipeline}
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Pipeline
+            </button>
           </div>
           <div className="space-y-4">
             {Object.entries(orch.pipelines).map(([name, pipeline]) => (
@@ -687,7 +806,7 @@ function OrchestratorEditor({
           </div>
         </section>
       </div>
-    </ScrollArea>
+    </div>
   )
 }
 
@@ -727,12 +846,12 @@ function YamlEditor({
   return (
     <div className="flex flex-1 flex-col min-h-0">
       {error && (
-        <div className="px-4 py-2 bg-destructive/10 border-b text-destructive text-xs font-mono">
+        <div className="px-4 py-2 bg-destructive/10 border-b border-border/40 text-destructive text-[11px] font-mono">
           {error}
         </div>
       )}
-      <div className="flex flex-1 min-h-0 overflow-auto bg-zinc-950">
-        <div className="py-4 pl-4 pr-2 text-right select-none text-zinc-600 text-xs font-mono leading-relaxed shrink-0">
+      <div className="flex flex-1 min-h-0 overflow-auto bg-[#0d0f12]">
+        <div className="py-4 pl-4 pr-2 text-right select-none text-zinc-600 text-[11px] font-mono leading-relaxed shrink-0">
           {Array.from({ length: lineCount }, (_, i) => (
             <div key={i}>{i + 1}</div>
           ))}
@@ -742,7 +861,7 @@ function YamlEditor({
           value={value}
           onChange={(e) => handleChange(e.target.value)}
           spellCheck={false}
-          className="flex-1 bg-transparent text-zinc-200 text-xs font-mono leading-relaxed p-4 pl-2 resize-none outline-none border-none"
+          className="flex-1 bg-transparent text-zinc-200 text-[11px] font-mono leading-relaxed p-4 pl-2 resize-none outline-none border-none"
           style={{ tabSize: 2 }}
         />
       </div>
