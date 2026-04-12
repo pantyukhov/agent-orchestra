@@ -168,14 +168,16 @@ function buildTmuxCommand(command: string, args: string[], env: Record<string, s
 
   const innerCmd = buildRemoteCommand(command, args, env, cwd)
 
+  // Use exec to replace shell — no lingering parent.
+  // nohup the TTL watchdog so it's fully detached.
   return [
     `mkdir -p ${shellQuote(logDir)}; touch ${shellQuote(logFile)};`,
     `tmux new-session -d -s ${shellQuote(session)} ${shellQuote(innerCmd)};`,
     `tmux pipe-pane -t ${shellQuote(session)} -o 'cat >> ${shellQuote(logFile)}';`,
-    `(sleep ${ttlSec} && tmux kill-session -t ${shellQuote(session)} 2>/dev/null) & TTL_PID=$!;`,
+    `nohup bash -c 'sleep ${ttlSec} && tmux kill-session -t ${shellQuote(session)}' >/dev/null 2>&1 &`,
     `tail -n +1 -f ${shellQuote(logFile)} & TAIL_PID=$!;`,
     `while tmux has-session -t ${shellQuote(session)} 2>/dev/null; do sleep 1; done;`,
-    `sleep 1; kill $TAIL_PID $TTL_PID 2>/dev/null; wait $TAIL_PID 2>/dev/null; exit 0`
+    `kill $TAIL_PID 2>/dev/null; exit 0`
   ].join(' ')
 }
 

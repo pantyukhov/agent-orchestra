@@ -297,10 +297,10 @@ func buildTmuxCommand(command string, args []string, env map[string]string, work
 		"mkdir -p %s; touch %s; "+
 			"tmux new-session -d -s %s %s; "+
 			"tmux pipe-pane -t %s -o 'cat >> %s'; "+
-			"(sleep %d && tmux kill-session -t %s 2>/dev/null) & TTL_PID=$!; "+
+			"nohup bash -c 'sleep %d && tmux kill-session -t %s' >/dev/null 2>&1 & "+
 			"tail -n +1 -f %s & TAIL_PID=$!; "+
 			"while tmux has-session -t %s 2>/dev/null; do sleep 1; done; "+
-			"sleep 1; kill $TAIL_PID $TTL_PID 2>/dev/null; wait $TAIL_PID 2>/dev/null; exit 0",
+			"kill $TAIL_PID 2>/dev/null; exit 0",
 		shellQuote(logDir), shellQuote(logFile),
 		shellQuote(session), shellQuote(innerCmd),
 		shellQuote(session), shellQuote(logFile),
