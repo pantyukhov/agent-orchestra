@@ -6,13 +6,15 @@ import { WelcomePage } from './pages/WelcomePage'
 import { ConfigEditorPage } from './pages/ConfigEditorPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LogsPage } from './pages/LogsPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { useStore } from './hooks/use-store'
 
 const pages = {
   welcome: WelcomePage,
   config: ConfigEditorPage,
   history: HistoryPage,
-  logs: LogsPage
+  logs: LogsPage,
+  settings: SettingsPage
 }
 
 class ErrorBoundary extends React.Component<

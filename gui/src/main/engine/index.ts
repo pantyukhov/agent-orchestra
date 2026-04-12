@@ -1,5 +1,6 @@
 import { join, dirname } from 'path'
-import { BrowserWindow, Notification } from 'electron'
+import { BrowserWindow, Notification, net } from 'electron'
+import { loadSettings } from '../ipc-handlers'
 import type { Config, PipelineEvent, EngineStatus, DefaultsConfig } from './types'
 import { loadConfig } from './config'
 import { executePipeline } from './pipeline'
@@ -26,7 +27,23 @@ function emitEvent(event: PipelineEvent) {
 }
 
 function notify(title: string, body: string) {
-  new Notification({ title, body }).show()
+  const settings = loadSettings()
+
+  // macOS notification (default on)
+  if (settings.notifications?.mac !== false) {
+    new Notification({ title, body }).show()
+  }
+
+  // Telegram
+  const tg = settings.notifications?.telegram
+  if (tg?.enabled && tg.botToken && tg.chatId) {
+    const text = `*${title}*\n${body}`
+    const url = `https://api.telegram.org/bot${tg.botToken}/sendMessage`
+    const request = net.request({ method: 'POST', url })
+    request.setHeader('Content-Type', 'application/json')
+    request.write(JSON.stringify({ chat_id: tg.chatId, text, parse_mode: 'Markdown' }))
+    request.end()
+  }
 }
 
 export async function startEngine(configPath: string): Promise<void> {

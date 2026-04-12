@@ -42,6 +42,26 @@ export function Sidebar() {
           )}
         </button>
       ))}
+      <div className="flex-1" />
+      <button
+        className={cn(
+          'relative flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-100',
+          page === 'settings'
+            ? 'text-foreground'
+            : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-foreground/[0.04]'
+        )}
+        onClick={() => setPage('settings' as any)}
+        title="Settings"
+      >
+        <SettingsIcon active={page === 'settings'} />
+        {page === 'settings' && (
+          <motion.div
+            layoutId="nav"
+            className="absolute inset-0 rounded-md bg-foreground/[0.08]"
+            transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+          />
+        )}
+      </button>
     </div>
   )
 }
@@ -79,6 +99,15 @@ function LogsIcon({ active }: { active: boolean }) {
       <path d="M4 2.5h5.5l3 3V13a1 1 0 01-1 1H4a1 1 0 01-1-1V3.5a1 1 0 011-1z" />
       <path d="M9.5 2.5v3h3" />
       <path d="M5.5 8h5M5.5 10.5h3.5" />
+    </svg>
+  )
+}
+
+function SettingsIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={active ? 1.4 : 1.2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="2" />
+      <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" />
     </svg>
   )
 }

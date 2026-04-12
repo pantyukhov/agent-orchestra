@@ -60,5 +60,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Utility
   selectDirectory: () => ipcRenderer.invoke('util:select-dir'),
-  showInFolder: (path: string) => ipcRenderer.invoke('util:show-in-folder', path)
+  showInFolder: (path: string) => ipcRenderer.invoke('util:show-in-folder', path),
+
+  // Settings
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  saveSettings: (settings: unknown) => ipcRenderer.invoke('settings:save', settings)
 })

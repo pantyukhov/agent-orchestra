@@ -10,7 +10,19 @@ import { getLogFiles, readLogFile, tailLogFile, untailLogFile, watchLogDir } fro
 // Persist recent workspaces to disk
 const settingsPath = join(app.getPath('userData'), 'settings.json')
 
-function loadSettings(): { recentWorkspaces: string[] } {
+export interface AppSettings {
+  recentWorkspaces: string[]
+  notifications?: {
+    mac?: boolean
+    telegram?: {
+      enabled: boolean
+      botToken: string
+      chatId: string
+    }
+  }
+}
+
+export function loadSettings(): AppSettings {
   try {
     const data = readFileSync(settingsPath, 'utf-8')
     return JSON.parse(data)
@@ -19,7 +31,7 @@ function loadSettings(): { recentWorkspaces: string[] } {
   }
 }
 
-function saveSettings(settings: { recentWorkspaces: string[] }) {
+export function saveAppSettings(settings: AppSettings) {
   try {
     mkdirSync(dirname(settingsPath), { recursive: true })
     writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8')
@@ -36,7 +48,9 @@ function addRecent(path: string) {
   if (idx !== -1) recentWorkspaces.splice(idx, 1)
   recentWorkspaces.unshift(path)
   if (recentWorkspaces.length > 10) recentWorkspaces.pop()
-  saveSettings({ recentWorkspaces })
+  const s = loadSettings()
+  s.recentWorkspaces = recentWorkspaces
+  saveAppSettings(s)
 }
 
 function findYamlFiles(dir: string): string[] {
@@ -160,5 +174,12 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('util:show-in-folder', (_e, path: string) => {
     shell.showItemInFolder(path)
+  })
+
+  // Settings
+  ipcMain.handle('settings:get', () => loadSettings())
+
+  ipcMain.handle('settings:save', (_e, newSettings: any) => {
+    saveAppSettings(newSettings)
   })
 }
