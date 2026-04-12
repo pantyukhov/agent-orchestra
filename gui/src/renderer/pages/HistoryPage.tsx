@@ -144,7 +144,7 @@ function parseClaudeOutput(output?: string): ParsedResult | null {
 function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord) => void }) {
   return (
     <div className="flex-1 overflow-auto">
-      <div className="p-6 space-y-4 max-w-2xl">
+      <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="ao-heading">{run.pipeline}</h2>
           <div className="flex items-center gap-2">
