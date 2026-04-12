@@ -7,6 +7,8 @@ import { HistoryStore } from './history'
 
 let abortController: AbortController | null = null
 let status: EngineStatus = 'stopped'
+let runningPromise: Promise<void> | null = null
+let currentRunId: string | undefined
 
 function broadcast(channel: string, ...args: unknown[]) {
   for (const win of BrowserWindow.getAllWindows()) {
@@ -33,19 +35,24 @@ export async function startEngine(configPath: string): Promise<void> {
   setStatus('running')
   abortController = new AbortController()
 
+  const run = (async () => {
   try {
     const config = loadConfig(configPath)
 
     if (config.pipeline) {
       const historyDir = join(dirname(configPath), '..', '.history')
       const history = new HistoryStore(historyDir)
+      history.markStaleRuns()
 
       await executePipeline(config.pipeline, {
         defaults: config.pipeline.defaults || {},
         signal: abortController.signal,
         data: {},
         history,
-        emit: emitEvent
+        emit: (event) => {
+          if (event.type === 'pipeline:started') currentRunId = event.runId
+          emitEvent(event)
+        }
       })
     } else {
       throw new Error('Only pipeline mode is supported in the GUI engine. Use the CLI for orchestrator mode.')
@@ -61,7 +68,13 @@ export async function startEngine(configPath: string): Promise<void> {
     }
   } finally {
     abortController = null
+    runningPromise = null
+    currentRunId = undefined
   }
+  })()
+
+  runningPromise = run
+  return run
 }
 
 export function stopEngine(): void {
@@ -70,6 +83,18 @@ export function stopEngine(): void {
   }
 }
 
+/** Abort and wait for the pipeline to finish cleanup (history writes, etc). */
+export async function stopEngineAndWait(): Promise<void> {
+  stopEngine()
+  if (runningPromise) {
+    await runningPromise.catch(() => {})
+  }
+}
+
 export function getEngineStatus(): EngineStatus {
   return status
+}
+
+export function getCurrentRunId(): string | undefined {
+  return currentRunId
 }

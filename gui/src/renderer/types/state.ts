@@ -23,7 +23,7 @@ export interface RunRecord {
   id: string
   pipeline: string
   config: string
-  status: 'running' | 'success' | 'failure' | 'canceled'
+  status: 'running' | 'success' | 'failure' | 'canceled' | 'stale'
   started_at: string
   ended_at?: string
   duration?: string

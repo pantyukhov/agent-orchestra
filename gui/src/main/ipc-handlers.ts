@@ -3,7 +3,8 @@ import { join, dirname } from 'path'
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'
 import yaml from 'js-yaml'
 import { loadConfig, saveConfig, createDefaultConfig } from './config-manager'
-import { startEngine, stopEngine, getEngineStatus } from './engine/index'
+import { startEngine, stopEngine, getEngineStatus, getCurrentRunId } from './engine/index'
+import { HistoryStore } from './engine/history'
 import { getLogFiles, readLogFile, tailLogFile, untailLogFile, watchLogDir } from './log-watcher'
 
 // Persist recent workspaces to disk
@@ -64,23 +65,9 @@ function loadHistory(workspaceDir: string): unknown[] {
   const historyDir = join(workspaceDir, '.history')
   if (!existsSync(historyDir)) return []
 
-  try {
-    const entries = readdirSync(historyDir)
-    return entries
-      .filter((f) => f.endsWith('.json'))
-      .map((f) => {
-        try {
-          const data = readFileSync(join(historyDir, f), 'utf-8')
-          return JSON.parse(data)
-        } catch {
-          return null
-        }
-      })
-      .filter(Boolean)
-      .sort((a: any, b: any) => (b.started_at || '').localeCompare(a.started_at || ''))
-  } catch {
-    return []
-  }
+  const store = new HistoryStore(historyDir)
+  store.markStaleRuns(getCurrentRunId())
+  return store.list()
 }
 
 export function registerIpcHandlers(): void {

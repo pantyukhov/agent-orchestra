@@ -68,6 +68,17 @@ export class HistoryStore {
     }
   }
 
+  /** Mark any 'running' records as 'stale' (except the current run). */
+  markStaleRuns(currentRunId?: string): void {
+    for (const record of this.list()) {
+      if (record.status === 'running' && record.id !== currentRunId) {
+        record.status = 'stale'
+        record.ended_at = new Date().toISOString()
+        this.save(record)
+      }
+    }
+  }
+
   get(id: string): RunRecord | null {
     try {
       return JSON.parse(readFileSync(join(this.dir, `${id}.json`), 'utf-8'))

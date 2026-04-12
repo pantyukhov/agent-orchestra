@@ -12,14 +12,15 @@ export async function runSSH(
   defaults: DefaultsConfig,
   sshCfg: SSHConfig,
   signal: AbortSignal,
-  onOutput: (stream: 'stdout' | 'stderr', line: string) => void
+  onOutput: (stream: 'stdout' | 'stderr', line: string) => void,
+  runId?: string
 ): Promise<RunResult> {
   const [command, args] = resolveCommand(step, defaults)
   const env = resolveEnv(step, defaults)
   const cwd = resolveWorkingDir(step, defaults)
 
   const remoteCmd = sshCfg.tmux
-    ? buildTmuxCommand(command, args, env, cwd, sshCfg.tmux, step.name)
+    ? buildTmuxCommand(command, args, env, cwd, sshCfg.tmux, step.name, runId)
     : buildRemoteCommand(command, args, env, cwd)
 
   const start = Date.now()
@@ -158,9 +159,9 @@ function buildRemoteCommand(command: string, args: string[], env?: Record<string
   return parts.join(' ')
 }
 
-function buildTmuxCommand(command: string, args: string[], env: Record<string, string> | undefined, cwd: string | undefined, tmux: TmuxConfig, stepName?: string): string {
-  let session = tmux.session || stepName || 'agent'
-  session = `${session}-${formatTimestamp()}`
+function buildTmuxCommand(command: string, args: string[], env: Record<string, string> | undefined, cwd: string | undefined, tmux: TmuxConfig, stepName?: string, runId?: string): string {
+  const baseName = tmux.session || stepName || 'agent'
+  const session = runId ? `${baseName}-${runId}` : `${baseName}-${formatTimestamp()}`
   const logDir = tmux.log_dir || '/tmp/agent-orchestra'
   const logFile = `${logDir}/${session}.log`
   const ttlStr = tmux.ttl || '72h'

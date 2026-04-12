@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc-handlers'
+import { stopEngineAndWait } from './engine'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -41,6 +42,11 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
+})
+
+app.on('before-quit', (e) => {
+  e.preventDefault()
+  stopEngineAndWait().finally(() => app.exit())
 })
 
 app.on('window-all-closed', () => {

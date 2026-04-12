@@ -8,10 +8,11 @@ const statusColors: Record<string, string> = {
   running: 'bg-foreground/[0.08] text-foreground',
   success: 'bg-foreground/[0.06] text-muted-foreground',
   failure: 'bg-destructive/10 text-destructive',
-  canceled: 'bg-foreground/[0.06] text-muted-foreground'
+  canceled: 'bg-foreground/[0.06] text-muted-foreground',
+  stale: 'bg-foreground/[0.06] text-muted-foreground'
 }
 
-const ALL_STATUSES = ['all', 'success', 'failure', 'running', 'canceled'] as const
+const ALL_STATUSES = ['all', 'success', 'failure', 'running', 'canceled', 'stale'] as const
 
 export function HistoryPage() {
   const { workspacePath, runHistory, selectedRun, setRunHistory, setSelectedRun, setConfig, setPage } = useStore()
@@ -60,9 +61,9 @@ export function HistoryPage() {
       {/* Run list */}
       <div className="w-80 border-r border-border/40 flex flex-col">
         <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
-          <span className="text-[13px] font-medium text-foreground/80">Runs ({filtered.length})</span>
+          <span className="ao-heading">Runs ({filtered.length})</span>
           <button
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100"
+            className="ao-btn-icon"
             onClick={loadHistory}
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -98,14 +99,14 @@ export function HistoryPage() {
                 <div
                   key={run.id}
                   className={cn(
-                    'rounded-md px-3 py-2 cursor-pointer hover:bg-foreground/[0.04] transition-colors duration-100',
+                    'rounded-md px-3.5 py-2.5 cursor-pointer hover:bg-foreground/[0.04] active:scale-[0.98] active:opacity-80 transition-colors duration-100',
                     selectedRun?.id === run.id && 'bg-foreground/[0.06]'
                   )}
                   onClick={() => setSelectedRun(run)}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-medium truncate text-foreground/80">{run.pipeline}</span>
-                    <span className={`px-1.5 py-0.5 text-[10px] rounded-md ${statusColors[run.status] || statusColors.canceled}`}>
+                    <span className="text-[13px] truncate text-foreground/80">{run.pipeline}</span>
+                    <span className={`ao-badge ${statusColors[run.status] || statusColors.canceled}`}>
                       {run.status}
                     </span>
                   </div>
@@ -146,22 +147,22 @@ function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord)
       <div className="p-6 space-y-4 max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-medium text-foreground/80">{run.pipeline}</h2>
+          <h2 className="ao-heading">{run.pipeline}</h2>
           <div className="flex items-center gap-2">
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-secondary"
               onClick={() => onRerun(run)}
             >
               <Play className="h-3 w-3" /> Re-run
             </button>
-            <span className={`px-1.5 py-0.5 text-[11px] rounded-md ${statusColors[run.status] || statusColors.canceled}`}>
+            <span className={`ao-badge ${statusColors[run.status] || statusColors.canceled}`}>
               {run.status}
             </span>
           </div>
         </div>
 
         {/* Info */}
-        <div className="rounded-lg border border-border/40">
+        <div className="ao-card">
           <div className="px-4 py-3 text-[13px] space-y-2">
             <Row label="ID" value={run.id} />
             <Row label="Config" value={run.config} />
@@ -182,7 +183,7 @@ function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord)
 
         {/* SSH only */}
         {run.ssh && !run.tmux && (
-          <div className="rounded-lg border border-border/40">
+          <div className="ao-card">
             <div className="px-4 py-3 text-[13px] space-y-2">
               <Row label="SSH Host" value={`${run.ssh.user}@${run.ssh.host}`} />
               {run.ssh.port > 0 && <Row label="Port" value={String(run.ssh.port)} />}
@@ -192,16 +193,16 @@ function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord)
 
         {/* Steps */}
         {run.steps.length > 0 && (
-          <div className="rounded-lg border border-border/40">
+          <div className="ao-card">
             <div className="px-4 py-2.5 border-b border-border/40">
-              <span className="text-[13px] font-medium text-foreground/80">Steps ({run.steps.length})</span>
+              <span className="ao-heading">Steps ({run.steps.length})</span>
             </div>
             <div className="px-4 py-3 space-y-2">
               {run.steps.map((step, i) => (
                 <div key={i} className="rounded-md border border-border/40 p-3 text-[13px] space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-foreground/80">{step.name}</span>
-                    <span className={`px-1.5 py-0.5 text-[10px] rounded-md ${
+                    <span className="text-foreground/80">{step.name}</span>
+                    <span className={`ao-badge ${
                       step.status === 'success' ? 'bg-foreground/[0.06] text-muted-foreground' : 'bg-destructive/10 text-destructive'
                     }`}>
                       {step.status}
@@ -210,7 +211,7 @@ function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord)
                   {step.duration && <div className="text-[11px] text-muted-foreground/60">{step.duration}</div>}
                   {step.error && <div className="text-[11px] text-destructive">{step.error}</div>}
                   {step.output && (
-                    <pre className="bg-[#0d0f12] text-zinc-300 p-2 rounded-md text-[11px] overflow-auto max-h-40 mt-2">
+                    <pre className="bg-[hsl(var(--terminal-bg))] text-[hsl(var(--terminal-fg))] p-2 rounded-md text-[11px] overflow-auto max-h-40 mt-2">
                       {step.output}
                     </pre>
                   )}
@@ -234,10 +235,10 @@ function TmuxCard({ tmux }: { tmux: NonNullable<RunRecord['tmux']> }) {
   }
 
   return (
-    <div className="rounded-lg border border-border/40">
+    <div className="ao-card">
       <div className="px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
         <Terminal className="h-3.5 w-3.5 text-muted-foreground/60" />
-        <span className="text-[13px] font-medium text-foreground/80">tmux Session</span>
+        <span className="ao-heading">tmux Session</span>
       </div>
       <div className="px-4 py-3 text-[13px] space-y-3">
         <Row label="Session" value={tmux.session} />
@@ -246,7 +247,7 @@ function TmuxCard({ tmux }: { tmux: NonNullable<RunRecord['tmux']> }) {
         <div className="flex items-center gap-2">
           <code className="bg-foreground/[0.04] px-2 py-1 rounded-md text-[11px] flex-1 truncate font-mono">{tmux.attach}</code>
           <button
-            className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1 shrink-0"
+            className="ao-btn-secondary shrink-0"
             onClick={handleCopy}
           >
             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}

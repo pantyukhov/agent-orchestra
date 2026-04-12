@@ -11,6 +11,7 @@ export interface PipelineContext {
   data: Record<string, any>
   history: HistoryStore
   emit: (event: PipelineEvent) => void
+  runId?: string
 }
 
 export async function executePipeline(
@@ -20,6 +21,7 @@ export async function executePipeline(
   ensureStepEntries(ctx.data, config.steps)
 
   const record = ctx.history.start(config.name, '')
+  ctx.runId = record.id
   ctx.emit({ type: 'pipeline:started', runId: record.id, pipeline: config.name })
 
   // Record SSH/tmux info
@@ -149,7 +151,7 @@ async function runAgent(step: StepConfig, ctx: PipelineContext): Promise<RunResu
     }
 
     if (sshCfg?.host) {
-      lastResult = await runSSH(step, ctx.defaults, sshCfg, ctx.signal, onOutput)
+      lastResult = await runSSH(step, ctx.defaults, sshCfg, ctx.signal, onOutput, ctx.runId)
     } else {
       lastResult = await runLocal(step, ctx.defaults, ctx.signal, onOutput)
     }
