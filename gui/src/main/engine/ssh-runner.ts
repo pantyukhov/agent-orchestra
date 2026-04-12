@@ -77,12 +77,21 @@ export async function runSSH(
           conn.end()
           const durationMs = Date.now() - start
 
+          // Parse session output when capture_output is enabled
+          let finalOutput = step.capture_output ? outputBuf : undefined
+          let sessionId: string | undefined
+          if (step.capture_output && outputBuf) {
+            const parsed = parseSessionOutput(outputBuf)
+            finalOutput = parsed.cleanOutput
+            sessionId = parsed.sessionId
+          }
+
           if (signal.aborted) {
             resolve({ exitCode: -1, durationMs, error: 'canceled' })
           } else if (code !== 0) {
-            resolve({ exitCode: code, durationMs, error: `exit code ${code}`, output: step.capture_output ? outputBuf : undefined })
+            resolve({ exitCode: code, durationMs, error: `exit code ${code}`, output: finalOutput, sessionId })
           } else {
-            resolve({ exitCode: 0, durationMs, output: step.capture_output ? outputBuf : undefined })
+            resolve({ exitCode: 0, durationMs, output: finalOutput, sessionId })
           }
         })
       })
@@ -186,6 +195,28 @@ function formatTimestamp(): string {
   const d = new Date()
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
+export function parseSessionOutput(raw: string): { sessionId?: string; cleanOutput: string } {
+  // Search from the end for a line starting with '{' that is valid JSON with session_id
+  const lines = raw.split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i].trim()
+    if (line.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(line)
+        if (parsed.session_id) {
+          return {
+            sessionId: parsed.session_id,
+            cleanOutput: parsed.result || raw
+          }
+        }
+      } catch {
+        // Not valid JSON, continue searching
+      }
+    }
+  }
+  return { cleanOutput: raw }
 }
 
 function shellQuote(s: string): string {
