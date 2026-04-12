@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Config } from '../types/config'
 import type { OrchestratorState, ProcessStatus, LogFileInfo, RunRecord } from '../types/state'
 
-type Page = 'welcome' | 'config' | 'execution' | 'history' | 'logs'
+type Page = 'welcome' | 'config' | 'history' | 'logs'
 
 interface AppState {
   // Navigation

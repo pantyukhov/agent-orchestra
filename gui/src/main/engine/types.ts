@@ -20,6 +20,7 @@ export interface DefaultsConfig {
   timeout?: string
   on_error?: string
   ssh?: SSHConfig
+  session?: boolean
 }
 
 export interface SSHConfig {
@@ -66,6 +67,8 @@ export interface StepConfig {
   ssh?: SSHConfig
   capture_output?: boolean
   loop?: LoopConfig
+  session?: boolean
+  resume?: string
 }
 
 export interface OrchestratorConfig {
@@ -138,6 +141,7 @@ export interface StepRecord {
   exit_code: number
   error?: string
   output?: string
+  session_id?: string
 }
 
 // ── Pipeline events (sent to renderer via IPC) ───────────────────

@@ -5,7 +5,6 @@ import { useStore } from '../../hooks/use-store'
 const nav = [
   { id: 'welcome' as const, label: 'Home', icon: HomeIcon },
   { id: 'config' as const, label: 'Configs', icon: ConfigIcon },
-  { id: 'execution' as const, label: 'Run', icon: RunIcon },
   { id: 'history' as const, label: 'History', icon: HistoryIcon },
   { id: 'logs' as const, label: 'Logs', icon: LogsIcon }
 ]
@@ -38,7 +37,7 @@ export function Sidebar() {
           {item.id === 'config' && dirty && (
             <span className="absolute top-0.5 right-0.5 h-1 w-1 rounded-full bg-orange-400/80" />
           )}
-          {item.id === 'execution' && processStatus === 'running' && (
+          {item.id === 'config' && processStatus === 'running' && (
             <span className="absolute top-0.5 right-0.5 h-1 w-1 rounded-full bg-green-400 animate-pulse" />
           )}
         </button>
@@ -46,8 +45,6 @@ export function Sidebar() {
     </div>
   )
 }
-
-// ── SF Symbols-inspired icons (thin, 16px) ──────────────────────
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -63,14 +60,6 @@ function ConfigIcon({ active }: { active: boolean }) {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={active ? 1.4 : 1.2} strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 4.5h10M3 8h10M3 11.5h7" />
       <circle cx="12" cy="11.5" r="1.5" />
-    </svg>
-  )
-}
-
-function RunIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={active ? 1.4 : 1.2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5.5 3.5v9l7-4.5-7-4.5z" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0} />
     </svg>
   )
 }

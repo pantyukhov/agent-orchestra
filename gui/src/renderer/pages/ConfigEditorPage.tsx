@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
-import { Save, Plus, FileText, ArrowLeft, Loader2, Play, Code, FormInput } from 'lucide-react'
+import { Save, Plus, FileText, ArrowLeft, Loader2, Play, Square, Code, FormInput, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
 import yaml from 'js-yaml'
 import { TriggerForm } from '../components/config/TriggerForm'
 import { PipelineForm } from '../components/config/PipelineForm'
@@ -23,6 +24,11 @@ export function ConfigEditorPage() {
   const [editMode, setEditMode] = useState<'form' | 'yaml'>('form')
   const [yamlText, setYamlText] = useState('')
   const [yamlError, setYamlError] = useState<string | null>(null)
+  const [terminalOpen, setTerminalOpen] = useState(false)
+  const [terminalOutput, setTerminalOutput] = useState<string[]>([])
+  const [copied, setCopied] = useState(false)
+  const terminalRef = useRef<HTMLDivElement>(null)
+  const { processStatus, setProcessStatus } = useStore()
 
   // ALL hooks must be above any early returns
   const handleSave = useCallback(async () => {
@@ -49,6 +55,47 @@ export function ConfigEditorPage() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [dirty, handleSave])
+
+  // Engine events → terminal output
+  useEffect(() => {
+    const unsub1 = window.electronAPI.onEngineEvent?.((event: any) => {
+      switch (event.type) {
+        case 'pipeline:started':
+          setTerminalOutput((o) => [...o, `Pipeline "${event.pipeline}" started\n`])
+          break
+        case 'step:started':
+          setTerminalOutput((o) => [...o, `\n$ ${event.command}\n`])
+          break
+        case 'step:output':
+          setTerminalOutput((o) => [...o.slice(-3000), event.line + '\n'])
+          break
+        case 'step:completed':
+          setTerminalOutput((o) => [...o, `\nCompleted (${event.result.durationMs}ms)\n`])
+          break
+        case 'step:failed':
+          setTerminalOutput((o) => [...o, `\nFailed: ${event.result.error}\n`])
+          break
+        case 'pipeline:completed':
+          setTerminalOutput((o) => [...o, `\nDone (${event.duration})\n`])
+          break
+        case 'pipeline:failed':
+          setTerminalOutput((o) => [...o, `\nFailed: ${event.error}\n`])
+          break
+        case 'pipeline:canceled':
+          setTerminalOutput((o) => [...o, `\nCanceled\n`])
+          break
+      }
+    }) || (() => {})
+    const unsub2 = window.electronAPI.onProcessStatusChange((status) => setProcessStatus(status as any))
+    return () => { unsub1(); unsub2() }
+  }, [])
+
+  // Auto-scroll terminal
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight
+    }
+  }, [terminalOutput])
 
   // --- Early returns (after all hooks) ---
 
@@ -141,8 +188,21 @@ export function ConfigEditorPage() {
     clearConfig()
   }
 
-  const handleRun = () => {
-    useStore.getState().setPage('execution')
+  const handleRun = async () => {
+    if (!configPath) return
+    if (processStatus === 'running') {
+      await window.electronAPI.stopProcess()
+      return
+    }
+    setTerminalOutput([])
+    setTerminalOpen(true)
+    await window.electronAPI.startProcess(configPath, false)
+  }
+
+  const handleCopyOutput = () => {
+    navigator.clipboard.writeText(terminalOutput.join(''))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const toolbar = (
@@ -213,12 +273,55 @@ export function ConfigEditorPage() {
         </button>
       </div>
       <button
-        className="ao-btn-primary bg-green-600/90 text-white hover:bg-green-600"
+        className={`ao-btn-primary ${processStatus === 'running' ? 'bg-destructive/10 text-destructive hover:bg-destructive/15' : ''}`}
         onClick={handleRun}
       >
-        <Play className="h-3 w-3" /> Run
+        {processStatus === 'running' ? (
+          <><Square className="h-3 w-3" /> Stop</>
+        ) : (
+          <><Play className="h-3 w-3" /> Run</>
+        )}
       </button>
+      {terminalOutput.length > 0 && (
+        <button
+          className="ao-btn-ghost text-[11px]"
+          onClick={() => setTerminalOpen(!terminalOpen)}
+        >
+          {terminalOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
+        </button>
+      )}
     </div>
+  )
+
+  const terminalPanel = (
+    <AnimatePresence>
+      {terminalOpen && terminalOutput.length > 0 && (
+        <motion.div
+          initial={{ height: 0 }}
+          animate={{ height: 200 }}
+          exit={{ height: 0 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
+          className="border-t border-border/40 flex flex-col overflow-hidden"
+        >
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-[hsl(var(--terminal-bg))]">
+            <span className="text-[11px] text-[hsl(var(--terminal-fg))] flex-1 opacity-60">
+              {processStatus === 'running' ? 'Running...' : 'Output'}
+            </span>
+            <button className="ao-btn-ghost text-[11px] text-[hsl(var(--terminal-fg))] opacity-60" onClick={handleCopyOutput}>
+              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            </button>
+            <button className="ao-btn-ghost text-[11px] text-[hsl(var(--terminal-fg))] opacity-60" onClick={() => setTerminalOutput([])}>
+              Clear
+            </button>
+          </div>
+          <div ref={terminalRef} className="flex-1 overflow-auto bg-[hsl(var(--terminal-bg))] px-4 py-2 font-mono text-[11px] text-[hsl(var(--terminal-fg))] leading-relaxed">
+            {terminalOutput.map((line, i) => (
+              <div key={i} className="whitespace-pre-wrap break-all">{line}</div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 
   // YAML editor mode
@@ -234,35 +337,32 @@ export function ConfigEditorPage() {
             setYamlError(null)
             try {
               const parsed = yaml.load(text) as Config
-              if (parsed) {
-                updateConfig(parsed)
-              }
-            } catch {
-              // Don't update config on parse error — user is still typing
-            }
+              if (parsed) { updateConfig(parsed) }
+            } catch {}
           }}
           onError={setYamlError}
         />
+        {terminalPanel}
       </div>
     )
   }
 
-  // Pipeline mode editor
   if (config.pipeline) {
     return (
       <div className="flex flex-1 flex-col">
         {toolbar}
         <PipelineEditor config={config} updateConfig={updateConfig} />
+        {terminalPanel}
       </div>
     )
   }
 
-  // Orchestrator mode editor
   if (config.orchestrator) {
     return (
       <div className="flex flex-1 flex-col">
         {toolbar}
         <OrchestratorEditor config={config} updateConfig={updateConfig} />
+        {terminalPanel}
       </div>
     )
   }
@@ -273,6 +373,7 @@ export function ConfigEditorPage() {
       <div className="flex flex-1 items-center justify-center text-muted-foreground text-[13px]">
         Unknown config format — switch to YAML mode to edit
       </div>
+      {terminalPanel}
     </div>
   )
 }

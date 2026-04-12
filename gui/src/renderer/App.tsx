@@ -4,7 +4,6 @@ import { Sidebar } from './components/layout/Sidebar'
 import { Header } from './components/layout/Header'
 import { WelcomePage } from './pages/WelcomePage'
 import { ConfigEditorPage } from './pages/ConfigEditorPage'
-import { ExecutionPage } from './pages/ExecutionPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LogsPage } from './pages/LogsPage'
 import { useStore } from './hooks/use-store'
@@ -12,7 +11,6 @@ import { useStore } from './hooks/use-store'
 const pages = {
   welcome: WelcomePage,
   config: ConfigEditorPage,
-  execution: ExecutionPage,
   history: HistoryPage,
   logs: LogsPage
 }
@@ -22,26 +20,15 @@ class ErrorBoundary extends React.Component<
   { error: Error | null }
 > {
   state = { error: null as Error | null }
-
-  static getDerivedStateFromError(error: Error) {
-    return { error }
-  }
-
+  static getDerivedStateFromError(error: Error) { return { error } }
   render() {
     if (this.state.error) {
       return (
         <div className="flex flex-1 items-center justify-center p-8">
           <div className="max-w-lg space-y-4">
-            <h2 className="text-sm font-medium text-destructive">Something went wrong</h2>
-            <pre className="bg-muted p-4 rounded-lg text-xs overflow-auto max-h-60 whitespace-pre-wrap text-muted-foreground">
-              {this.state.error.message}
-            </pre>
-            <button
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => this.setState({ error: null })}
-            >
-              Try again
-            </button>
+            <h2 className="text-[13px] text-destructive">Something went wrong</h2>
+            <pre className="bg-foreground/[0.04] p-4 rounded-lg text-[11px] overflow-auto max-h-60 whitespace-pre-wrap text-muted-foreground">{this.state.error.message}</pre>
+            <button className="ao-btn-ghost" onClick={() => this.setState({ error: null })}>Try again</button>
           </div>
         </div>
       )
@@ -52,7 +39,7 @@ class ErrorBoundary extends React.Component<
 
 export default function App() {
   const page = useStore((s) => s.page)
-  const Page = pages[page]
+  const Page = pages[page as keyof typeof pages] || WelcomePage
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
