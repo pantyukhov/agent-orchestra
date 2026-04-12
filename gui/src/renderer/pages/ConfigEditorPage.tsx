@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
-import { Save, Plus, FileText, ArrowLeft, Loader2, Play, Square, Code, FormInput, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Save, Plus, FileText, ArrowLeft, Loader2, Play, Square, Code, FormInput, Copy, Check, ChevronDown, ChevronUp, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import yaml from 'js-yaml'
 import { TriggerForm } from '../components/config/TriggerForm'
@@ -27,8 +27,14 @@ export function ConfigEditorPage() {
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [terminalOutput, setTerminalOutput] = useState<string[]>([])
   const [copied, setCopied] = useState(false)
+  const [scheduledJobs, setScheduledJobs] = useState<{name: string; cron: string; configPath: string}[]>([])
   const terminalRef = useRef<HTMLDivElement>(null)
   const { processStatus, setProcessStatus } = useStore()
+
+  // Load scheduled jobs
+  useEffect(() => {
+    window.electronAPI.getScheduledJobs?.().then(setScheduledJobs).catch(() => {})
+  }, [workspacePath, config])
 
   // ALL hooks must be above any early returns
   const handleSave = useCallback(async () => {
@@ -167,9 +173,17 @@ export function ConfigEditorPage() {
                 >
                   <div className="py-3 px-4 flex items-center gap-3">
                     <FileText className="h-4 w-4 text-muted-foreground/60 shrink-0" />
-                    <span className="text-[13px] font-mono flex-1 text-foreground/80">
-                      {p.replace(workspacePath + '/', '')}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[13px] font-mono text-foreground/80 block truncate">
+                        {p.replace(workspacePath + '/', '')}
+                      </span>
+                      {scheduledJobs.find(j => j.configPath === p) && (
+                        <span className="text-[11px] text-muted-foreground/50 flex items-center gap-1 mt-0.5">
+                          <Clock className="h-3 w-3" />
+                          {cronToHuman(scheduledJobs.find(j => j.configPath === p)!.cron)}
+                        </span>
+                      )}
+                    </div>
                     <span className="ao-badge border border-border/60 text-muted-foreground/60">
                       {p.includes('orchestrat') ? 'orch' : 'pipe'}
                     </span>
@@ -968,4 +982,20 @@ function YamlEditor({
       </div>
     </div>
   )
+}
+
+// ── Cron to human-readable ───────────────────────────────────
+
+function cronToHuman(cron: string): string {
+  const [min, hour, , , dow] = cron.split(' ')
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const time = `${hour.padStart(2, '0')}:${min.padStart(2, '0')}`
+
+  if (dow === '*') return `Daily at ${time}`
+  if (dow.includes(',')) return `${dow.split(',').map(d => days[+d] || d).join(', ')} at ${time}`
+  if (dow.includes('-')) {
+    const [from, to] = dow.split('-')
+    return `${days[+from]}–${days[+to]} at ${time}`
+  }
+  return `${days[+dow] || dow} at ${time}`
 }

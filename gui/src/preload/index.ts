@@ -64,5 +64,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
-  saveSettings: (settings: unknown) => ipcRenderer.invoke('settings:save', settings)
+  saveSettings: (settings: unknown) => ipcRenderer.invoke('settings:save', settings),
+
+  // Scheduler
+  getScheduledJobs: () => ipcRenderer.invoke('scheduler:jobs')
 })
