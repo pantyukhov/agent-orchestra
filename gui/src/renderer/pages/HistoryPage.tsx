@@ -173,7 +173,7 @@ function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord)
 
         {/* Steps */}
         {run.steps.filter(s => s.name !== '_init').map((step, i) => (
-          <StepCard key={i} step={step} />
+          <StepCard key={i} step={step} ssh={run.ssh} />
         ))}
       </div>
     </div>
@@ -182,7 +182,7 @@ function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord)
 
 // ── Step Card ──────────────────────────────────────────────────
 
-function StepCard({ step }: { step: RunRecord['steps'][0] }) {
+function StepCard({ step, ssh }: { step: RunRecord['steps'][0]; ssh?: RunRecord['ssh'] }) {
   const [showRaw, setShowRaw] = useState(false)
   const parsed = parseClaudeOutput(step.output)
 
@@ -221,7 +221,7 @@ function StepCard({ step }: { step: RunRecord['steps'][0] }) {
             </div>
 
             {/* Session */}
-            {parsed.sessionId && <SessionInfo sessionId={parsed.sessionId} />}
+            {parsed.sessionId && <SessionInfo sessionId={parsed.sessionId} ssh={ssh} />}
 
             {/* Raw toggle */}
             <button
@@ -261,9 +261,12 @@ function StepCard({ step }: { step: RunRecord['steps'][0] }) {
 
 // ── Session Info ──────────────────────────────────────────────
 
-function SessionInfo({ sessionId }: { sessionId: string }) {
+function SessionInfo({ sessionId, ssh }: { sessionId: string; ssh?: RunRecord['ssh'] }) {
   const [copied, setCopied] = useState(false)
-  const resumeCmd = `claude --resume ${sessionId}`
+  const claudeCmd = `claude --resume ${sessionId}`
+  const resumeCmd = ssh
+    ? `ssh ${ssh.user}@${ssh.host}${ssh.port && ssh.port !== 22 ? ` -p ${ssh.port}` : ''} -t '${claudeCmd}'`
+    : claudeCmd
 
   const handleCopy = () => {
     navigator.clipboard.writeText(resumeCmd)
@@ -275,7 +278,7 @@ function SessionInfo({ sessionId }: { sessionId: string }) {
     <div className="flex items-center gap-2 p-2.5 rounded-md bg-foreground/[0.03]">
       <div className="flex-1 min-w-0">
         <div className="text-[11px] text-muted-foreground/50">Resume session</div>
-        <code className="text-[12px] text-foreground/70 font-mono">{resumeCmd}</code>
+        <code className="text-[12px] text-foreground/70 font-mono break-all">{resumeCmd}</code>
       </div>
       <button className="ao-btn-icon shrink-0" onClick={handleCopy}>
         {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
