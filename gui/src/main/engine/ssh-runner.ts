@@ -21,7 +21,9 @@ export async function runSSH(
   const cwd = resolveWorkingDir(step, defaults)
 
   // Build script content and encode as base64 to avoid all quoting issues
-  const scriptContent = buildScriptContent(command, args, env, cwd)
+  // Pass prompt separately so it goes via stdin (avoids --allowed-tools eating it)
+  const prompt = step.prompt || undefined
+  const scriptContent = buildScriptContent(command, args, env, cwd, prompt)
   const b64 = Buffer.from(scriptContent).toString('base64')
 
   const remoteCmd = sshCfg.tmux
@@ -179,8 +181,8 @@ function convertKey(keyData: Buffer): string | Buffer {
   }
 }
 
-/** Build a bash script body — no quoting needed since it's written to a file or piped via base64 */
-function buildScriptContent(command: string, args: string[], env?: Record<string, string>, cwd?: string): string {
+/** Build a bash script body. Separates prompt from flags to avoid --allowed-tools eating the prompt. */
+function buildScriptContent(command: string, args: string[], env?: Record<string, string>, cwd?: string, prompt?: string): string {
   const lines: string[] = ['#!/bin/bash', 'set -e']
   if (env) {
     for (const [k, v] of Object.entries(env)) {
@@ -188,9 +190,21 @@ function buildScriptContent(command: string, args: string[], env?: Record<string
     }
   }
   if (cwd) lines.push(`cd ${shellQuote(cwd)}`)
-  // Build command with proper quoting for each arg
-  const cmdParts = [shellQuote(command), ...args.map(shellQuote)]
-  lines.push(cmdParts.join(' '))
+
+  // Filter out the prompt from args (it's the last non-flag argument)
+  // and pipe it via stdin instead, so --allowed-tools doesn't consume it
+  const flagArgs = prompt ? args.filter(a => a !== prompt) : args
+  const cmdParts = [shellQuote(command), ...flagArgs.map(shellQuote)]
+
+  if (prompt) {
+    // Use heredoc to pipe prompt via stdin — avoids all quoting issues
+    lines.push(`cat <<'__PROMPT_EOF__' | ${cmdParts.join(' ')}`)
+    lines.push(prompt)
+    lines.push('__PROMPT_EOF__')
+  } else {
+    lines.push(cmdParts.join(' '))
+  }
+
   return lines.join('\n') + '\n'
 }
 
