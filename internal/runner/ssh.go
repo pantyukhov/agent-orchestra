@@ -291,19 +291,22 @@ func buildTmuxCommand(command string, args []string, env map[string]string, work
 	// 1. Create log directory
 	// 2. Start new tmux session with unique name
 	// 3. Pipe tmux output to log file
-	// 4. Spawn background TTL watchdog that kills session after expiry
-	// 5. Tail the log file to stream output back through SSH
+	// 4. Spawn background TTL watchdog
+	// 5. Tail log in background, poll tmux session, kill tail when session dies
 	return fmt.Sprintf(
 		"mkdir -p %s; touch %s; "+
 			"tmux new-session -d -s %s %s; "+
 			"tmux pipe-pane -t %s -o 'cat >> %s'; "+
-			"(sleep %d && tmux kill-session -t %s 2>/dev/null) &"+
-			" tail -n +1 -f %s",
+			"(sleep %d && tmux kill-session -t %s 2>/dev/null) & "+
+			"tail -n +1 -f %s & TAIL_PID=$!; "+
+			"while tmux has-session -t %s 2>/dev/null; do sleep 1; done; "+
+			"sleep 1; kill $TAIL_PID 2>/dev/null; wait $TAIL_PID 2>/dev/null",
 		shellQuote(logDir), shellQuote(logFile),
 		shellQuote(session), shellQuote(innerCmd),
 		shellQuote(session), shellQuote(logFile),
 		ttlSeconds, shellQuote(session),
 		shellQuote(logFile),
+		shellQuote(session),
 	)
 }
 
