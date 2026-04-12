@@ -49,6 +49,7 @@ export async function startEngine(configPath: string): Promise<void> {
         signal: abortController.signal,
         data: {},
         history,
+        sessionIds: {},
         emit: (event) => {
           if (event.type === 'pipeline:started') currentRunId = event.runId
           emitEvent(event)
