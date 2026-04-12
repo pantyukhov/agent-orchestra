@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 
 import yaml from 'js-yaml'
 import { loadConfig, saveConfig, createDefaultConfig } from './config-manager'
 import { startEngine, stopEngine, getEngineStatus, getCurrentRunId } from './engine/index'
+import { startScheduler, getScheduledJobs } from './engine/scheduler'
 import { HistoryStore } from './engine/history'
 import { getLogFiles, readLogFile, tailLogFile, untailLogFile, watchLogDir } from './log-watcher'
 
@@ -93,11 +94,17 @@ export function registerIpcHandlers(): void {
     if (result.canceled || !result.filePaths[0]) return null
     const dir = result.filePaths[0]
     addRecent(dir)
+    startScheduler(dir)
     return dir
   })
 
   ipcMain.handle('workspace:configs', (_e, dir: string) => {
+    startScheduler(dir)  // restart scheduler on config refresh
     return findYamlFiles(dir)
+  })
+
+  ipcMain.handle('scheduler:jobs', () => {
+    return getScheduledJobs()
   })
 
   ipcMain.handle('workspace:history', (_e, dir: string) => {

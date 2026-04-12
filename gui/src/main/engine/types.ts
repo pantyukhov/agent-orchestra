@@ -7,6 +7,7 @@ export interface Config {
 
 export interface PipelineConfig {
   name: string
+  schedule?: string  // cron expression, e.g. "0 13 * * 5" (Fridays at 13:00)
   defaults?: DefaultsConfig
   loop?: LoopConfig
   steps: StepConfig[]
