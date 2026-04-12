@@ -24,13 +24,13 @@ test.afterAll(async () => {
   await app.close()
 })
 
-test.describe('Welcome Page', () => {
+test.describe('Dashboard Page', () => {
   test('shows app title', async () => {
     const title = page.locator('text=Agent Orchestra')
     await expect(title.first()).toBeVisible()
   })
 
-  test('shows Open Workspace button', async () => {
+  test('shows Open Workspace button in modal', async () => {
     const btn = page.locator('text=Open Workspace')
     await expect(btn).toBeVisible()
   })
@@ -38,13 +38,13 @@ test.describe('Welcome Page', () => {
 
 test.describe('Navigation', () => {
   test('sidebar has all navigation buttons', async () => {
-    // 5 sidebar buttons: Home, Config, Run, History, Logs
-    const buttons = page.locator('div.flex.h-full.w-14 button')
+    // 5 sidebar buttons: Dashboard, Config, Run, History, Logs
+    const buttons = page.locator('div.flex.h-full.w-11 button')
     await expect(buttons).toHaveCount(5)
   })
 
   test('can navigate to each page', async () => {
-    const buttons = page.locator('div.flex.h-full.w-14 button')
+    const buttons = page.locator('div.flex.h-full.w-11 button')
 
     // Click Config (2nd button)
     await buttons.nth(1).click()
@@ -62,7 +62,7 @@ test.describe('Navigation', () => {
     await buttons.nth(4).click()
     await expect(page.locator('text=Open a workspace first')).toBeVisible()
 
-    // Back to Home
+    // Back to Dashboard
     await buttons.nth(0).click()
     await expect(page.locator('text=Open Workspace')).toBeVisible()
   })
@@ -149,7 +149,7 @@ test.describe('Workspace via IPC', () => {
 test.describe('Config Editor UI', () => {
   test('shows config list after workspace is set', async () => {
     // Navigate to config page and set workspace via UI state
-    const sidebar = page.locator('div.flex.h-full.w-14 button')
+    const sidebar = page.locator('div.flex.h-full.w-11 button')
     await sidebar.nth(1).click()
 
     // Set workspace via evaluate (simulating the open workspace flow)

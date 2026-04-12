@@ -13,7 +13,6 @@ export function DashboardPage() {
   const workspaceConfigs = useStore((s) => s.workspaceConfigs)
   const processStatus = useStore((s) => s.processStatus)
   const setPage = useStore((s) => s.setPage)
-  const setConfig = useStore((s) => s.setConfig)
   const setSelectedRun = useStore((s) => s.setSelectedRun)
   const setRunHistory = useStore((s) => s.setRunHistory)
 
