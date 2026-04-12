@@ -2,7 +2,7 @@ import React from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Sidebar } from './components/layout/Sidebar'
 import { Header } from './components/layout/Header'
-import { WelcomePage } from './pages/WelcomePage'
+import { DashboardPage } from './pages/DashboardPage'
 import { ConfigEditorPage } from './pages/ConfigEditorPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LogsPage } from './pages/LogsPage'
@@ -10,7 +10,7 @@ import { SettingsPage } from './pages/SettingsPage'
 import { useStore } from './hooks/use-store'
 
 const pages = {
-  welcome: WelcomePage,
+  dashboard: DashboardPage,
   config: ConfigEditorPage,
   history: HistoryPage,
   logs: LogsPage,
@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component<
 
 export default function App() {
   const page = useStore((s) => s.page)
-  const Page = pages[page as keyof typeof pages] || WelcomePage
+  const Page = pages[page as keyof typeof pages] || DashboardPage
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">

@@ -1,9 +1,10 @@
 import { motion } from 'motion/react'
+import { LayoutDashboard } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useStore } from '../../hooks/use-store'
 
 const nav = [
-  { id: 'welcome' as const, label: 'Home', icon: HomeIcon },
+  { id: 'dashboard' as const, label: 'Dashboard', icon: DashboardIcon },
   { id: 'config' as const, label: 'Configs', icon: ConfigIcon },
   { id: 'history' as const, label: 'History', icon: HistoryIcon },
   { id: 'logs' as const, label: 'Logs', icon: LogsIcon }
@@ -66,13 +67,8 @@ export function Sidebar() {
   )
 }
 
-function HomeIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={active ? 1.4 : 1.2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2.5 6.5L8 2l5.5 4.5V13a1 1 0 01-1 1h-9a1 1 0 01-1-1V6.5z" />
-      <path d="M6 14V9h4v5" />
-    </svg>
-  )
+function DashboardIcon({ active }: { active: boolean }) {
+  return <LayoutDashboard size={16} strokeWidth={active ? 1.4 : 1.2} />
 }
 
 function ConfigIcon({ active }: { active: boolean }) {

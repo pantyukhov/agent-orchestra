@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Config } from '../types/config'
 import type { OrchestratorState, ProcessStatus, LogFileInfo, RunRecord } from '../types/state'
 
-type Page = 'welcome' | 'config' | 'history' | 'logs' | 'settings'
+type Page = 'dashboard' | 'config' | 'history' | 'logs' | 'settings'
 
 interface AppState {
   // Navigation
@@ -51,7 +51,7 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  page: 'welcome',
+  page: 'dashboard',
   setPage: (page) => set({ page }),
 
   workspacePath: null,
@@ -64,7 +64,7 @@ export const useStore = create<AppState>((set) => ({
       configPath: null,
       config: null,
       dirty: false,
-      page: 'welcome'
+      page: 'dashboard'
     }),
 
   configPath: null,
