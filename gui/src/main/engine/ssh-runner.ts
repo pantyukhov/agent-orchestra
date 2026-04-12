@@ -177,9 +177,10 @@ function buildTmuxCommand(command: string, args: string[], env: Record<string, s
   const ttlStr = tmux.ttl || '72h'
   const ttlSec = Math.round(parseDuration(ttlStr) / 1000)
 
-  const innerCmd = buildRemoteCommand(command, args, env, cwd)
+  // Wrap in bash -c so tmux session dies when command finishes
+  const rawCmd = buildRemoteCommand(command, args, env, cwd)
+  const innerCmd = `bash -c ${shellQuote(rawCmd)}`
 
-  // Use exec to replace shell — no lingering parent.
   // nohup the TTL watchdog so it's fully detached.
   return [
     `mkdir -p ${shellQuote(logDir)}; touch ${shellQuote(logFile)};`,
