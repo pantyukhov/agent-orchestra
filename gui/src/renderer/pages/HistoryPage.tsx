@@ -215,6 +215,17 @@ function RunDetail({ run, onRerun }: { run: RunRecord; onRerun: (run: RunRecord)
                       {step.output}
                     </pre>
                   )}
+                  {step.session_id && (
+                    <div className="mt-2 p-2 rounded-md bg-foreground/[0.04]">
+                      <span className="text-[10px] text-muted-foreground">Session ID: </span>
+                      <code className="text-[10px]">{step.session_id}</code>
+                      <div className="mt-1">
+                        <code className="text-[10px] text-muted-foreground">
+                          claude --resume {step.session_id}
+                        </code>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -46,6 +46,7 @@ export interface StepRecord {
   exit_code: number
   error?: string
   output?: string
+  session_id?: string
 }
 
 export interface WorkspaceInfo {
