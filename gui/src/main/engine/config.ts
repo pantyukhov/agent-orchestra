@@ -74,7 +74,7 @@ export function resolveCommand(
   // Session mode: inject -p and --output-format json for structured output
   const sessionEnabled = step.session ?? defaults.session ?? false
   if (sessionEnabled) {
-    if (!args.includes('-p')) args.push('-p')
+    if (!args.includes('-p') && !args.includes('--print')) args.push('-p')
     if (!args.includes('--output-format')) args.push('--output-format', 'json')
     // Resume a previous session if configured
     if (step.resume && sessionIds?.[step.resume]) {
