@@ -1,5 +1,5 @@
 import { join, dirname } from 'path'
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, Notification } from 'electron'
 import type { Config, PipelineEvent, EngineStatus, DefaultsConfig } from './types'
 import { loadConfig } from './config'
 import { executePipeline } from './pipeline'
@@ -23,6 +23,10 @@ function setStatus(s: EngineStatus) {
 
 function emitEvent(event: PipelineEvent) {
   broadcast('engine:event', event)
+}
+
+function notify(title: string, body: string) {
+  new Notification({ title, body }).show()
 }
 
 export async function startEngine(configPath: string): Promise<void> {
@@ -60,11 +64,14 @@ export async function startEngine(configPath: string): Promise<void> {
     }
 
     setStatus('stopped')
+    notify('Pipeline completed', `${config.pipeline.name} finished successfully`)
   } catch (err: any) {
     if (err.message === 'canceled' || abortController?.signal.aborted) {
       setStatus('stopped')
+      notify('Pipeline canceled', `${configPath.split('/').pop()}`)
     } else {
       setStatus('error')
+      notify('Pipeline failed', err.message)
       emitEvent({ type: 'pipeline:failed', runId: '', error: err.message })
     }
   } finally {
