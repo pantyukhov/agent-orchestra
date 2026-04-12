@@ -24,11 +24,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onProcessStatusChange: (callback: (status: string) => void) => {
     const handler = (_e: unknown, status: string) => callback(status)
-    ipcRenderer.on('process:status-change', handler)
-    return () => ipcRenderer.removeListener('process:status-change', handler)
+    ipcRenderer.on('engine:status', handler)
+    return () => ipcRenderer.removeListener('engine:status', handler)
+  },
+  onEngineEvent: (callback: (event: unknown) => void) => {
+    const handler = (_e: unknown, event: unknown) => callback(event)
+    ipcRenderer.on('engine:event', handler)
+    return () => ipcRenderer.removeListener('engine:event', handler)
   },
 
-  // State
+  // State (legacy — kept for orchestrator mode)
   watchState: (statePath: string) => ipcRenderer.invoke('state:watch', statePath),
   unwatchState: () => ipcRenderer.invoke('state:unwatch'),
   onStateUpdate: (callback: (state: unknown) => void) => {

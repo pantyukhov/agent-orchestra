@@ -1,4 +1,4 @@
-import { defineConfig } from 'electron-vite'
+import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -8,9 +8,11 @@ const __dirname2 = dirname(__filename2)
 
 export default defineConfig({
   main: {
+    plugins: [externalizeDepsPlugin()],
     build: {
       rollupOptions: {
-        input: resolve(__dirname2, 'src/main/index.ts')
+        input: resolve(__dirname2, 'src/main/index.ts'),
+        external: [/\.node$/]
       }
     }
   },

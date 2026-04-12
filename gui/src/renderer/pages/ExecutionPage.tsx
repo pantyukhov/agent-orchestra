@@ -31,10 +31,40 @@ export function ExecutionPage() {
   const outputRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const unsub1 = window.electronAPI.onProcessOutput((data) => appendOutput(data))
+    const unsub1 = window.electronAPI.onEngineEvent?.((event: any) => {
+      // Convert engine events to output lines
+      switch (event.type) {
+        case 'pipeline:started':
+          appendOutput(`Pipeline "${event.pipeline}" started (run: ${event.runId})\n`)
+          break
+        case 'step:started':
+          appendOutput(`\n--- Step: ${event.stepName} ---\n$ ${event.command}\n`)
+          break
+        case 'step:output':
+          appendOutput(event.line + '\n')
+          break
+        case 'step:completed':
+          appendOutput(`\n--- Step "${event.stepName}" completed (${event.result.durationMs}ms) ---\n`)
+          break
+        case 'step:failed':
+          appendOutput(`\n--- Step "${event.stepName}" FAILED: ${event.result.error} ---\n`)
+          break
+        case 'step:retry':
+          appendOutput(`\n--- Retrying step "${event.stepName}" (attempt ${event.attempt}/${event.maxAttempts}) ---\n`)
+          break
+        case 'pipeline:completed':
+          appendOutput(`\nPipeline completed successfully (${event.duration})\n`)
+          break
+        case 'pipeline:failed':
+          appendOutput(`\nPipeline FAILED: ${event.error}\n`)
+          break
+        case 'pipeline:canceled':
+          appendOutput(`\nPipeline canceled\n`)
+          break
+      }
+    }) || (() => {})
     const unsub2 = window.electronAPI.onProcessStatusChange((status) => setProcessStatus(status as any))
-    const unsub3 = window.electronAPI.onStateUpdate((state) => setOrchestratorState(state as any))
-    return () => { unsub1(); unsub2(); unsub3() }
+    return () => { unsub1(); unsub2() }
   }, [])
 
   useEffect(() => {
@@ -53,10 +83,6 @@ export function ExecutionPage() {
     if (!configPath) return
     clearOutput()
     await window.electronAPI.startProcess(configPath, once)
-    const cfg = useStore.getState().config
-    if (cfg?.orchestrator?.persistence?.file) {
-      await window.electronAPI.watchState(cfg.orchestrator.persistence.file)
-    }
   }
 
   const handleStop = () => window.electronAPI.stopProcess()

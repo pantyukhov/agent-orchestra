@@ -3,8 +3,7 @@ import { join, dirname } from 'path'
 import { readdirSync, readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs'
 import yaml from 'js-yaml'
 import { loadConfig, saveConfig, createDefaultConfig } from './config-manager'
-import { startProcess, stopProcess, getProcessStatus } from './process-manager'
-import { watchState, unwatchState } from './state-watcher'
+import { startEngine, stopEngine, getEngineStatus } from './engine/index'
 import { getLogFiles, readLogFile, tailLogFile, untailLogFile, watchLogDir } from './log-watcher'
 
 // Persist recent workspaces to disk
@@ -135,26 +134,17 @@ export function registerIpcHandlers(): void {
     return filePath
   })
 
-  // Process
-  ipcMain.handle('process:start', (_e, configPath: string, once: boolean) => {
-    startProcess(configPath, once)
+  // Engine (replaces process-manager)
+  ipcMain.handle('process:start', (_e, configPath: string, _once: boolean) => {
+    startEngine(configPath)  // fire-and-forget, events via IPC
   })
 
   ipcMain.handle('process:stop', () => {
-    stopProcess()
+    stopEngine()
   })
 
   ipcMain.handle('process:status', () => {
-    return getProcessStatus()
-  })
-
-  // State
-  ipcMain.handle('state:watch', (_e, statePath: string) => {
-    watchState(statePath)
-  })
-
-  ipcMain.handle('state:unwatch', () => {
-    unwatchState()
+    return getEngineStatus()
   })
 
   // Logs
