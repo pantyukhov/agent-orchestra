@@ -32,6 +32,34 @@ export function ConfigEditorPage() {
   const [yamlText, setYamlText] = useState('')
   const [yamlError, setYamlError] = useState<string | null>(null)
 
+  // ALL hooks must be above any early returns
+  const handleSave = useCallback(async () => {
+    if (!configPath || !config) return
+    setSaveStatus('saving')
+    try {
+      await window.electronAPI.saveConfigFile(configPath, config)
+      setDirty(false)
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2000)
+    } catch {
+      setSaveStatus('error')
+      setTimeout(() => setSaveStatus('idle'), 3000)
+    }
+  }, [configPath, config, setDirty])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        if (dirty) handleSave()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [dirty, handleSave])
+
+  // --- Early returns (after all hooks) ---
+
   if (!workspacePath) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
@@ -56,10 +84,8 @@ export function ConfigEditorPage() {
     const configsDir = workspacePath + '/configs'
     try {
       const path = await window.electronAPI.createNewConfig(configsDir, mode)
-      // Refresh config list
       const configs = await window.electronAPI.getWorkspaceConfigs(workspacePath)
       useStore.getState().setWorkspace(workspacePath, configs)
-      // Open the new config
       const content = await window.electronAPI.loadConfigFile(path)
       setConfig(path, content)
     } catch (e) {
@@ -67,7 +93,6 @@ export function ConfigEditorPage() {
     }
   }
 
-  // Config list view
   if (!config || !configPath) {
     return (
       <div className="flex flex-1 flex-col">
@@ -113,19 +138,6 @@ export function ConfigEditorPage() {
     )
   }
 
-  const handleSave = useCallback(async () => {
-    setSaveStatus('saving')
-    try {
-      await window.electronAPI.saveConfigFile(configPath, config!)
-      setDirty(false)
-      setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
-    } catch {
-      setSaveStatus('error')
-      setTimeout(() => setSaveStatus('idle'), 3000)
-    }
-  }, [configPath, config, setDirty])
-
   const handleBack = () => {
     if (dirty && !window.confirm('You have unsaved changes. Discard?')) return
     clearConfig()
@@ -134,18 +146,6 @@ export function ConfigEditorPage() {
   const handleRun = () => {
     useStore.getState().setPage('execution')
   }
-
-  // Cmd+S / Ctrl+S to save
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault()
-        if (dirty) handleSave()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [dirty, handleSave])
 
   const toolbar = (
     <div className="flex items-center gap-2 border-b px-4 py-2">

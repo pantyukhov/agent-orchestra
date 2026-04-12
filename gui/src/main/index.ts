@@ -26,6 +26,7 @@ function createWindow() {
 
   if (process.env.ELECTRON_RENDERER_URL) {
     mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
+    mainWindow.webContents.openDevTools({ mode: 'bottom' })
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
