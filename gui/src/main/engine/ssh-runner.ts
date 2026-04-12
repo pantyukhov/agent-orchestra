@@ -177,14 +177,17 @@ function buildTmuxCommand(command: string, args: string[], env: Record<string, s
   const ttlStr = tmux.ttl || '72h'
   const ttlSec = Math.round(parseDuration(ttlStr) / 1000)
 
-  // Wrap in bash -c so tmux session dies when command finishes
-  const rawCmd = buildRemoteCommand(command, args, env, cwd)
-  const innerCmd = `bash -c ${shellQuote(rawCmd)}`
+  // Encode the command as base64 to avoid all shell quoting issues.
+  // Remote decodes and writes a script, tmux runs the script.
+  const innerCmd = buildRemoteCommand(command, args, env, cwd)
+  const b64 = Buffer.from(`#!/bin/bash\n${innerCmd}\n`).toString('base64')
+  const scriptFile = `${logDir}/${session}.sh`
 
   // nohup the TTL watchdog so it's fully detached.
   return [
     `mkdir -p ${shellQuote(logDir)}; touch ${shellQuote(logFile)};`,
-    `tmux new-session -d -s ${shellQuote(session)} ${shellQuote(innerCmd)};`,
+    `echo ${b64} | base64 -d > ${shellQuote(scriptFile)} && chmod +x ${shellQuote(scriptFile)};`,
+    `tmux new-session -d -s ${shellQuote(session)} ${shellQuote(scriptFile)};`,
     `tmux pipe-pane -t ${shellQuote(session)} -o 'cat >> ${shellQuote(logFile)}';`,
     `nohup bash -c 'sleep ${ttlSec} && tmux kill-session -t ${shellQuote(session)}' >/dev/null 2>&1 &`,
     `tail -n +1 -f ${shellQuote(logFile)} & TAIL_PID=$!;`,
