@@ -99,3 +99,8 @@ export const useStore = create<AppState>((set) => ({
   setSelectedLog: (selectedLog) => set({ selectedLog }),
   setLogContent: (logContent) => set({ logContent })
 }))
+
+// Expose store for e2e tests
+if (typeof window !== 'undefined') {
+  ;(window as any).__store = useStore
+}
