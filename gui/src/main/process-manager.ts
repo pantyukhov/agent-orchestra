@@ -17,7 +17,11 @@ function setStatus(s: typeof status) {
 }
 
 export function startProcess(configPath: string, once: boolean): void {
-  if (proc) throw new Error('Process already running')
+  // Kill previous process if still lingering
+  if (proc) {
+    try { proc.kill('SIGKILL') } catch {}
+    proc = null
+  }
 
   const args = ['-config', configPath]
   if (once) args.push('-once')
@@ -56,9 +60,17 @@ export function startProcess(configPath: string, once: boolean): void {
 export function stopProcess(): void {
   if (!proc) return
   proc.kill('SIGINT')
-  // Fallback: SIGTERM after 5s
   setTimeout(() => {
-    if (proc) proc.kill('SIGTERM')
+    if (proc) {
+      proc.kill('SIGTERM')
+      setTimeout(() => {
+        if (proc) {
+          try { proc.kill('SIGKILL') } catch {}
+          proc = null
+          setStatus('stopped')
+        }
+      }, 5000)
+    }
   }, 5000)
 }
 
