@@ -158,9 +158,9 @@ async function runAgent(step: StepConfig, ctx: PipelineContext): Promise<RunResu
     }
 
     if (sshCfg?.host) {
-      lastResult = await runSSH(step, ctx.defaults, sshCfg, ctx.signal, onOutput, ctx.runId)
+      lastResult = await runSSH(step, ctx.defaults, sshCfg, ctx.signal, onOutput, ctx.runId, ctx.sessionIds)
     } else {
-      lastResult = await runLocal(step, ctx.defaults, ctx.signal, onOutput)
+      lastResult = await runLocal(step, ctx.defaults, ctx.signal, onOutput, ctx.sessionIds)
     }
 
     if (!lastResult.error) {

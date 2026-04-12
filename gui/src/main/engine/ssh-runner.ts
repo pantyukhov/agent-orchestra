@@ -13,9 +13,10 @@ export async function runSSH(
   sshCfg: SSHConfig,
   signal: AbortSignal,
   onOutput: (stream: 'stdout' | 'stderr', line: string) => void,
-  runId?: string
+  runId?: string,
+  sessionIds?: Record<string, string>
 ): Promise<RunResult> {
-  const [command, args] = resolveCommand(step, defaults)
+  const [command, args] = resolveCommand(step, defaults, sessionIds)
   const env = resolveEnv(step, defaults)
   const cwd = resolveWorkingDir(step, defaults)
 

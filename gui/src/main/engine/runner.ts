@@ -7,9 +7,10 @@ export async function runLocal(
   step: StepConfig,
   defaults: DefaultsConfig,
   signal: AbortSignal,
-  onOutput: (stream: 'stdout' | 'stderr', line: string) => void
+  onOutput: (stream: 'stdout' | 'stderr', line: string) => void,
+  sessionIds?: Record<string, string>
 ): Promise<RunResult> {
-  const [command, args] = resolveCommand(step, defaults)
+  const [command, args] = resolveCommand(step, defaults, sessionIds)
   const env = resolveEnv(step, defaults)
   const cwd = resolveWorkingDir(step, defaults)
   const timeoutMs = resolveTimeout(step, defaults)
