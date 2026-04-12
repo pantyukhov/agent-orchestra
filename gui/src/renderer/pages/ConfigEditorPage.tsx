@@ -1,5 +1,6 @@
-import { useMemo, useState, useEffect, useCallback } from 'react'
-import { Save, Plus, FileText, ArrowLeft, Loader2, Play } from 'lucide-react'
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
+import { Save, Plus, FileText, ArrowLeft, Loader2, Play, Code, FormInput } from 'lucide-react'
+import yaml from 'js-yaml'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
@@ -27,6 +28,9 @@ export function ConfigEditorPage() {
     useStore()
   const [loading, setLoading] = useState(false)
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [editMode, setEditMode] = useState<'form' | 'yaml'>('form')
+  const [yamlText, setYamlText] = useState('')
+  const [yamlError, setYamlError] = useState<string | null>(null)
 
   if (!workspacePath) {
     return (
@@ -165,11 +169,75 @@ export function ConfigEditorPage() {
       <Badge variant="outline" className="text-xs">
         {config.orchestrator ? 'orchestrator' : 'pipeline'}
       </Badge>
+      <Separator orientation="vertical" className="h-5" />
+      <div className="flex bg-muted rounded-md p-0.5">
+        <Button
+          size="sm"
+          variant={editMode === 'form' ? 'secondary' : 'ghost'}
+          className="h-6 px-2 text-xs"
+          onClick={() => {
+            if (editMode === 'yaml') {
+              // Apply YAML changes before switching
+              try {
+                const parsed = yaml.load(yamlText) as Config
+                if (parsed) {
+                  updateConfig(parsed)
+                  setYamlError(null)
+                }
+              } catch (e: any) {
+                setYamlError(e.message)
+                return
+              }
+            }
+            setEditMode('form')
+          }}
+        >
+          <FormInput className="h-3 w-3 mr-1" /> Form
+        </Button>
+        <Button
+          size="sm"
+          variant={editMode === 'yaml' ? 'secondary' : 'ghost'}
+          className="h-6 px-2 text-xs"
+          onClick={() => {
+            setYamlText(yaml.dump(config, { indent: 2, lineWidth: -1, noRefs: true }))
+            setYamlError(null)
+            setEditMode('yaml')
+          }}
+        >
+          <Code className="h-3 w-3 mr-1" /> YAML
+        </Button>
+      </div>
       <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={handleRun}>
         <Play className="h-3.5 w-3.5 mr-1" /> Run
       </Button>
     </div>
   )
+
+  // YAML editor mode
+  if (editMode === 'yaml') {
+    return (
+      <div className="flex flex-1 flex-col">
+        {toolbar}
+        <YamlEditor
+          value={yamlText}
+          error={yamlError}
+          onChange={(text) => {
+            setYamlText(text)
+            setYamlError(null)
+            try {
+              const parsed = yaml.load(text) as Config
+              if (parsed) {
+                updateConfig(parsed)
+              }
+            } catch {
+              // Don't update config on parse error — user is still typing
+            }
+          }}
+          onError={setYamlError}
+        />
+      </div>
+    )
+  }
 
   // Pipeline mode editor
   if (config.pipeline) {
@@ -192,8 +260,11 @@ export function ConfigEditorPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center text-muted-foreground">
-      Unknown config format
+    <div className="flex flex-1 flex-col">
+      {toolbar}
+      <div className="flex flex-1 items-center justify-center text-muted-foreground">
+        Unknown config format — switch to YAML mode to edit
+      </div>
     </div>
   )
 }
@@ -617,5 +688,64 @@ function OrchestratorEditor({
         </section>
       </div>
     </ScrollArea>
+  )
+}
+
+// ── YAML Editor ──────────────────────────────────────────────────
+
+function YamlEditor({
+  value,
+  error,
+  onChange,
+  onError
+}: {
+  value: string
+  error: string | null
+  onChange: (text: string) => void
+  onError: (err: string | null) => void
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [])
+
+  const handleChange = (text: string) => {
+    onChange(text)
+    try {
+      yaml.load(text)
+      onError(null)
+    } catch (e: any) {
+      onError(e.message)
+    }
+  }
+
+  const lineCount = value.split('\n').length
+
+  return (
+    <div className="flex flex-1 flex-col min-h-0">
+      {error && (
+        <div className="px-4 py-2 bg-destructive/10 border-b text-destructive text-xs font-mono">
+          {error}
+        </div>
+      )}
+      <div className="flex flex-1 min-h-0 overflow-auto bg-zinc-950">
+        <div className="py-4 pl-4 pr-2 text-right select-none text-zinc-600 text-xs font-mono leading-relaxed shrink-0">
+          {Array.from({ length: lineCount }, (_, i) => (
+            <div key={i}>{i + 1}</div>
+          ))}
+        </div>
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          spellCheck={false}
+          className="flex-1 bg-transparent text-zinc-200 text-xs font-mono leading-relaxed p-4 pl-2 resize-none outline-none border-none"
+          style={{ tabSize: 2 }}
+        />
+      </div>
+    </div>
   )
 }
