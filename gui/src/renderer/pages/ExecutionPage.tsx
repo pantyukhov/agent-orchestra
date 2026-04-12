@@ -106,21 +106,21 @@ export function ExecutionPage() {
       {/* Controls */}
       <div className="flex items-center gap-3 border-b border-border/40 px-4 py-3">
         <button
-          className="px-2.5 py-1 text-[12px] rounded-md bg-green-600/90 text-white hover:bg-green-600 transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+          className="ao-btn-primary bg-green-600/90 text-white hover:bg-green-600 disabled:opacity-40 disabled:pointer-events-none"
           onClick={handleStart}
           disabled={processStatus === 'running' || !configPath}
         >
           <Play className="h-3.5 w-3.5" /> Start
         </button>
         <button
-          className="px-2.5 py-1 text-[12px] rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+          className="ao-btn-primary bg-destructive/10 text-destructive hover:bg-destructive/20 disabled:opacity-40 disabled:pointer-events-none"
           onClick={handleStop}
           disabled={processStatus !== 'running'}
         >
           <Square className="h-3.5 w-3.5" /> Stop
         </button>
 
-        <div className="w-px h-6 bg-border/40" />
+        <div className="ml-1" />
 
         <div className="flex items-center gap-2">
           <button
@@ -138,14 +138,14 @@ export function ExecutionPage() {
               }`}
             />
           </button>
-          <label className="text-[12px] text-muted-foreground/80">--once</label>
+          <label className="ao-label">--once</label>
         </div>
 
-        <div className="w-px h-6 bg-border/40" />
+        <div className="ml-1" />
 
         {/* Config name with link */}
         <button
-          className="px-2 py-1 text-[11px] font-mono rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+          className="ao-btn-ghost font-mono text-[11px] disabled:opacity-40 disabled:pointer-events-none"
           onClick={handleGoToConfig}
           disabled={!configPath}
         >
@@ -155,7 +155,7 @@ export function ExecutionPage() {
 
         <div className="flex-1" />
 
-        <span className={`px-1.5 py-0.5 text-[11px] rounded-md ${statusColors[processStatus] || statusColors.stopped}`}>
+        <span className={`ao-badge ${statusColors[processStatus] || statusColors.stopped}`}>
           {processStatus}
         </span>
       </div>
@@ -167,10 +167,10 @@ export function ExecutionPage() {
           <div
             ref={outputRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-auto bg-[#0d0f12] p-4 font-mono text-[11px] text-zinc-200 leading-relaxed"
+            className="flex-1 overflow-auto bg-[hsl(var(--terminal-bg))] p-4 font-mono text-[11px] text-[hsl(var(--terminal-fg))] leading-relaxed"
           >
             {processOutput.length === 0 ? (
-              <span className="text-zinc-500">
+              <span className="text-muted-foreground/50">
                 {configPath ? 'Press Start to run agent-orchestra...' : 'Select a config first (Config tab)'}
               </span>
             ) : (
@@ -180,15 +180,15 @@ export function ExecutionPage() {
             )}
           </div>
           {/* Output toolbar */}
-          <div className="flex items-center gap-2 border-t border-border/40 bg-[#0d0f12] px-4 py-1">
+          <div className="flex items-center gap-2 border-t border-border/40 bg-[hsl(var(--terminal-bg))] px-4 py-1">
             <button
-              className="px-2 py-0.5 text-[11px] rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-ghost text-[11px] text-[hsl(var(--terminal-fg))]/60 hover:text-[hsl(var(--terminal-fg))]"
               onClick={clearOutput}
             >
               <RotateCw className="h-3 w-3" /> Clear
             </button>
             <button
-              className="px-2 py-0.5 text-[11px] rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+              className="ao-btn-ghost text-[11px] text-[hsl(var(--terminal-fg))]/60 hover:text-[hsl(var(--terminal-fg))] disabled:opacity-40 disabled:pointer-events-none"
               onClick={handleCopyOutput}
               disabled={processOutput.length === 0}
             >
@@ -198,13 +198,13 @@ export function ExecutionPage() {
             <div className="flex-1" />
             {!autoScroll && (
               <button
-                className="px-2 py-0.5 text-[11px] rounded-md text-zinc-400 hover:text-zinc-200 transition-colors duration-100"
+                className="ao-btn-ghost text-[11px] text-[hsl(var(--terminal-fg))]/60 hover:text-[hsl(var(--terminal-fg))]"
                 onClick={() => setAutoScroll(true)}
               >
                 Auto-scroll OFF — click to enable
               </button>
             )}
-            <span className="text-[10px] text-zinc-600">{processOutput.length} lines</span>
+            <span className="text-[11px] text-[hsl(var(--terminal-fg))]/40">{processOutput.length} lines</span>
           </div>
         </div>
 
@@ -212,9 +212,9 @@ export function ExecutionPage() {
         <div className="w-72 border-l border-border/40">
           <div className="h-full overflow-auto">
             <div className="p-4 space-y-4">
-              <div className="rounded-lg border border-border/40">
+              <div className="ao-card">
                 <div className="px-4 py-2.5 border-b border-border/40">
-                  <span className="text-[13px] font-medium text-foreground/80">State</span>
+                  <span className="ao-heading">State</span>
                 </div>
                 <div className="px-4 py-3 text-[12px] space-y-2">
                   {orchestratorState ? (
@@ -237,14 +237,14 @@ export function ExecutionPage() {
               </div>
 
               {orchestratorState && Object.keys(orchestratorState.locks || {}).length > 0 && (
-                <div className="rounded-lg border border-border/40">
+                <div className="ao-card">
                   <div className="px-4 py-2.5 border-b border-border/40">
-                    <span className="text-[13px] font-medium text-foreground/80">Active Locks ({Object.keys(orchestratorState.locks).length})</span>
+                    <span className="ao-heading">Active Locks ({Object.keys(orchestratorState.locks).length})</span>
                   </div>
                   <div className="px-4 py-3 text-[12px] space-y-2">
                     {Object.entries(orchestratorState.locks).map(([id, lock]) => (
                       <div key={id} className="rounded-md border border-border/40 p-2 space-y-1">
-                        <div className="font-mono font-medium text-[11px] truncate">{id}</div>
+                        <div className="font-mono text-[11px] truncate">{id}</div>
                         <div className="text-muted-foreground/80 text-[11px]">Pipeline: {lock.pipeline}</div>
                         <div className="text-muted-foreground/80 text-[11px]">Since: {new Date(lock.started_at).toLocaleTimeString()}</div>
                       </div>

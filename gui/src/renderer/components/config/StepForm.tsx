@@ -18,19 +18,19 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
   const isAction = !!step.action
 
   return (
-    <div className="rounded-lg border border-border/40">
+    <div className="ao-card">
       <div className="flex items-center gap-1 px-4 py-3 border-b border-border/40">
         {onMove && (
           <div className="flex flex-col -my-1">
             <button
-              className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 disabled:opacity-30 disabled:pointer-events-none"
+              className="ao-btn-icon p-0.5 disabled:opacity-30 disabled:pointer-events-none"
               disabled={index === 0}
               onClick={() => onMove(index, index - 1)}
             >
               <ChevronUp className="h-3 w-3" />
             </button>
             <button
-              className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 disabled:opacity-30 disabled:pointer-events-none"
+              className="ao-btn-icon p-0.5 disabled:opacity-30 disabled:pointer-events-none"
               disabled={index >= total - 1}
               onClick={() => onMove(index, index + 1)}
             >
@@ -38,12 +38,12 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
             </button>
           </div>
         )}
-        <span className="text-[13px] font-medium text-foreground/80 flex-1 ml-1">
+        <span className="ao-heading flex-1 ml-1">
           <span className="text-muted-foreground/60 text-[11px] mr-1">{index + 1}.</span>
           {step.action ? `Action: ${step.action}` : step.group ? `Group: ${step.group}` : step.name || `Step ${index + 1}`}
         </span>
         <button
-          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-foreground/[0.04] transition-colors duration-100"
+          className="ao-btn-icon hover:text-destructive"
           onClick={() => onRemove(index)}
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -54,9 +54,9 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
           <>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[12px] text-muted-foreground/80">Action</label>
+                <label className="ao-label">Action</label>
                 <select
-                  className="w-full h-8 px-2 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 transition-all duration-100"
+                  className="ao-input px-2"
                   value={step.action}
                   onChange={(e) => update({ action: e.target.value })}
                 >
@@ -67,9 +67,9 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
               </div>
               {step.action === 'git-checkout' && (
                 <div className="space-y-1">
-                  <label className="text-[12px] text-muted-foreground/80">Branch</label>
+                  <label className="ao-label">Branch</label>
                   <input
-                    className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                    className="ao-input"
                     value={step.branch || ''}
                     onChange={(e) => update({ branch: e.target.value })}
                   />
@@ -78,9 +78,9 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
             </div>
             {step.action === 'git-checkout' && (
               <div className="space-y-1">
-                <label className="text-[12px] text-muted-foreground/80">Create From</label>
+                <label className="ao-label">Create From</label>
                 <input
-                  className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                  className="ao-input"
                   value={step.create_from || ''}
                   onChange={(e) => update({ create_from: e.target.value })}
                   placeholder="origin/master"
@@ -89,9 +89,9 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
             )}
             {step.action === 'git-save' && (
               <div className="space-y-1">
-                <label className="text-[12px] text-muted-foreground/80">Message</label>
+                <label className="ao-label">Message</label>
                 <input
-                  className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                  className="ao-input"
                   value={step.message || ''}
                   onChange={(e) => update({ message: e.target.value })}
                 />
@@ -100,18 +100,18 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
             {step.action === 'gitlab-comment' && (
               <>
                 <div className="space-y-1">
-                  <label className="text-[12px] text-muted-foreground/80">Issue IID</label>
+                  <label className="ao-label">Issue IID</label>
                   <input
-                    className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                    className="ao-input"
                     value={step.issue || ''}
                     onChange={(e) => update({ issue: e.target.value })}
                     placeholder={'{{ .issue_iid }}'}
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[12px] text-muted-foreground/80">Body</label>
+                  <label className="ao-label">Body</label>
                   <textarea
-                    className="w-full min-h-[72px] px-2.5 py-2 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 resize-none font-mono transition-all duration-100 placeholder:text-muted-foreground/40"
+                    className="ao-input min-h-[72px] h-auto py-2 resize-none font-mono"
                     value={step.body || ''}
                     onChange={(e) => update({ body: e.target.value })}
                     rows={3}
@@ -124,17 +124,17 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
           <>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[12px] text-muted-foreground/80">Name</label>
+                <label className="ao-label">Name</label>
                 <input
-                  className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                  className="ao-input"
                   value={step.name || ''}
                   onChange={(e) => update({ name: e.target.value })}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[12px] text-muted-foreground/80">Timeout</label>
+                <label className="ao-label">Timeout</label>
                 <input
-                  className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                  className="ao-input"
                   value={step.timeout || ''}
                   onChange={(e) => update({ timeout: e.target.value })}
                   placeholder="30m"
@@ -143,9 +143,9 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
             </div>
 
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Prompt</label>
+              <label className="ao-label">Prompt</label>
               <textarea
-                className="w-full min-h-[72px] px-2.5 py-2 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 resize-none font-mono transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input min-h-[72px] h-auto py-2 resize-none font-mono"
                 value={step.prompt || ''}
                 onChange={(e) => update({ prompt: e.target.value })}
                 rows={4}
@@ -154,9 +154,9 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="text-[12px] text-muted-foreground/80">On Error</label>
+                <label className="ao-label">On Error</label>
                 <select
-                  className="w-full h-8 px-2 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 transition-all duration-100"
+                  className="ao-input px-2"
                   value={step.on_error || 'stop'}
                   onChange={(e) => update({ on_error: e.target.value as StepConfig['on_error'] })}
                 >
@@ -168,18 +168,18 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
               {step.on_error === 'retry' && (
                 <>
                   <div className="space-y-1">
-                    <label className="text-[12px] text-muted-foreground/80">Retry Count</label>
+                    <label className="ao-label">Retry Count</label>
                     <input
                       type="number"
-                      className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                      className="ao-input"
                       value={step.retry_count || 1}
                       onChange={(e) => update({ retry_count: parseInt(e.target.value) || 1 })}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[12px] text-muted-foreground/80">Retry Delay</label>
+                    <label className="ao-label">Retry Delay</label>
                     <input
-                      className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                      className="ao-input"
                       value={step.retry_delay || ''}
                       onChange={(e) => update({ retry_delay: e.target.value })}
                       placeholder="30s"
@@ -205,7 +205,7 @@ export function StepForm({ step, index, total = 0, onChange, onRemove, onMove }:
                   }`}
                 />
               </button>
-              <label className="text-[12px] text-muted-foreground/80">Capture Output</label>
+              <label className="ao-label">Capture Output</label>
             </div>
           </>
         )}

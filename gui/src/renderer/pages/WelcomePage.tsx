@@ -58,11 +58,11 @@ export function WelcomePage() {
 
         <button
           onClick={handleOpen}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border/60 hover:border-border hover:bg-accent/30 transition-all duration-150 group"
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border/60 hover:bg-accent/30 active:scale-[0.98] active:opacity-80 transition-all duration-150 group"
         >
           <FolderOpen className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
           <div className="text-left">
-            <div className="text-[13px] font-medium">Open Workspace</div>
+            <div className="text-[13px]">Open Workspace</div>
             <div className="text-[11px] text-muted-foreground">Select a folder with configs</div>
           </div>
         </button>
@@ -80,7 +80,7 @@ export function WelcomePage() {
                   initial={{ opacity: 0, x: -4 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05, duration: 0.2 }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-[13px] text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-100 font-mono truncate"
+                  className="w-full text-left px-3.5 py-2.5 rounded-lg text-[13px] text-muted-foreground hover:text-foreground hover:bg-accent/50 active:scale-[0.98] active:opacity-80 transition-all duration-100 font-mono truncate"
                   onClick={() => openWorkspace(path)}
                 >
                   {path.replace(/.*\//, '~/')}

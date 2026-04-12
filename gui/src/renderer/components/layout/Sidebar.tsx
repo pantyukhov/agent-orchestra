@@ -22,7 +22,7 @@ export function Sidebar() {
             'relative flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-100',
             page === item.id
               ? 'text-foreground'
-              : 'text-muted-foreground/60 hover:text-muted-foreground'
+              : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-foreground/[0.04]'
           )}
           onClick={() => setPage(item.id)}
           title={item.label}
@@ -31,7 +31,7 @@ export function Sidebar() {
           {page === item.id && (
             <motion.div
               layoutId="nav"
-              className="absolute inset-0 rounded-md bg-foreground/[0.06]"
+              className="absolute inset-0 rounded-md bg-foreground/[0.08]"
               transition={{ type: 'spring', stiffness: 500, damping: 38 }}
             />
           )}

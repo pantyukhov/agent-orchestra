@@ -12,7 +12,7 @@ export function Header() {
   }
 
   return (
-    <div className="drag-region flex h-10 items-center justify-between border-b border-border/50 px-4 bg-background/80 backdrop-blur-xl">
+    <div className="drag-region flex h-10 items-center justify-between border-b border-border/50 px-4 bg-background">
       <div className="no-drag flex items-center gap-1.5 text-[13px]">
         {workspaceName && (
           <>

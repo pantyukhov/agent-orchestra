@@ -60,7 +60,7 @@ export function LogsPage() {
 
   // Render log content with line numbers and search highlighting
   const renderContent = () => {
-    if (!logContent) return <span className="text-zinc-500">Empty log file</span>
+    if (!logContent) return <span className="text-muted-foreground/50">Empty log file</span>
 
     const lines = logContent.split('\n')
     const searchLower = search.toLowerCase()
@@ -81,7 +81,7 @@ export function LogsPage() {
             isWarn && !isMatch && 'text-yellow-400'
           )}
         >
-          <span className="w-12 shrink-0 text-right pr-3 text-zinc-600 select-none">{lineNum}</span>
+          <span className="w-12 shrink-0 text-right pr-3 text-muted-foreground/30 select-none">{lineNum}</span>
           <span className="flex-1 whitespace-pre-wrap break-all">{line}</span>
         </div>
       )
@@ -97,9 +97,9 @@ export function LogsPage() {
       {/* File list */}
       <div className="w-72 border-r border-border/40 flex flex-col">
         <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
-          <span className="text-[13px] font-medium text-foreground/80">Logs ({logFiles.length})</span>
+          <span className="ao-heading">Logs ({logFiles.length})</span>
           <button
-            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100"
+            className="ao-btn-icon"
             onClick={loadFiles}
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -114,7 +114,7 @@ export function LogsPage() {
                 <div
                   key={file.path}
                   className={cn(
-                    'rounded-md px-3 py-2 cursor-pointer text-[11px] hover:bg-foreground/[0.04] transition-colors duration-100',
+                    'rounded-md px-3.5 py-2.5 cursor-pointer text-[11px] hover:bg-foreground/[0.04] active:scale-[0.98] active:opacity-80 transition-colors duration-100',
                     selectedLog === file.path && 'bg-foreground/[0.06]'
                   )}
                   onClick={() => handleSelect(file.path)}
@@ -143,14 +143,14 @@ export function LogsPage() {
               <div className="relative w-48">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/60" />
                 <input
-                  className="w-full h-7 pl-7 pr-7 text-[11px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                  className="ao-input h-7 pl-7 pr-7 text-[11px]"
                   placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
                 {search && (
                   <>
-                    <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/60">
+                    <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground/60">
                       {matchCount}
                     </span>
                     <button
@@ -163,7 +163,7 @@ export function LogsPage() {
                 )}
               </div>
               <button
-                className="px-2 py-1 text-[11px] rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+                className="ao-btn-ghost text-[11px] disabled:opacity-40 disabled:pointer-events-none"
                 onClick={handleCopy}
                 disabled={!logContent}
               >
@@ -171,14 +171,14 @@ export function LogsPage() {
                 {copied ? 'Copied' : 'Copy'}
               </button>
               <button
-                className="px-2 py-1 text-[11px] rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                className="ao-btn-ghost text-[11px]"
                 onClick={() => window.electronAPI.showInFolder(selectedLog)}
               >
                 <FolderOpen className="h-3.5 w-3.5" /> Reveal
               </button>
             </div>
             {/* Content */}
-            <div className="flex-1 overflow-auto bg-[#0d0f12] p-4 font-mono text-[11px] text-zinc-300 leading-relaxed">
+            <div className="flex-1 overflow-auto bg-[hsl(var(--terminal-bg))] p-4 font-mono text-[11px] text-[hsl(var(--terminal-fg))] leading-relaxed">
               {renderContent()}
             </div>
           </>

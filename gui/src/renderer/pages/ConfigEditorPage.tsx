@@ -89,18 +89,18 @@ export function ConfigEditorPage() {
     return (
       <div className="flex flex-1 flex-col">
         <div className="border-b border-border/40 px-4 py-2 flex items-center gap-2">
-          <span className="text-[13px] font-medium text-foreground/80">Configs</span>
+          <span className="ao-heading">Configs</span>
           <span className="text-[11px] text-muted-foreground/60 font-mono flex-1 truncate">{workspacePath}</span>
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/60" />}
           <div className="flex gap-1">
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-secondary"
               onClick={() => handleNewConfig('pipeline')}
             >
               <Plus className="h-3 w-3" /> Pipeline
             </button>
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-secondary"
               onClick={() => handleNewConfig('orchestrator')}
             >
               <Plus className="h-3 w-3" /> Orchestrator
@@ -115,7 +115,7 @@ export function ConfigEditorPage() {
               workspaceConfigs.map((p) => (
                 <div
                   key={p}
-                  className="rounded-lg border border-border/40 cursor-pointer hover:border-foreground/20 transition-colors duration-100"
+                  className="ao-card cursor-pointer hover:bg-foreground/[0.02] active:scale-[0.98] active:opacity-80 transition-colors duration-100"
                   onClick={() => handleSelectConfig(p)}
                 >
                   <div className="py-3 px-4 flex items-center gap-3">
@@ -123,7 +123,7 @@ export function ConfigEditorPage() {
                     <span className="text-[13px] font-mono flex-1 text-foreground/80">
                       {p.replace(workspacePath + '/', '')}
                     </span>
-                    <span className="px-1.5 py-0.5 text-[10px] rounded-md border border-border/60 text-muted-foreground/60">
+                    <span className="ao-badge border border-border/60 text-muted-foreground/60">
                       {p.includes('orchestrat') ? 'orch' : 'pipe'}
                     </span>
                   </div>
@@ -148,14 +148,14 @@ export function ConfigEditorPage() {
   const toolbar = (
     <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2">
       <button
-        className="px-2 py-1 text-[12px] rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+        className="ao-btn-ghost"
         onClick={handleBack}
       >
         <ArrowLeft className="h-3.5 w-3.5" /> Configs
       </button>
-      <div className="w-px h-5 bg-border/40" />
+      <div className="ml-1" />
       <button
-        className="px-2.5 py-1 text-[12px] rounded-md bg-foreground/[0.06] text-foreground hover:bg-foreground/[0.1] transition-colors duration-100 inline-flex items-center gap-1 disabled:opacity-40 disabled:pointer-events-none"
+        className="ao-btn-primary disabled:opacity-40 disabled:pointer-events-none"
         onClick={handleSave}
         disabled={!dirty || saveStatus === 'saving'}
       >
@@ -166,15 +166,15 @@ export function ConfigEditorPage() {
         )}
         Save
       </button>
-      {saveStatus === 'saved' && <span className="px-1.5 py-0.5 text-[11px] rounded-md bg-foreground/[0.06] text-muted-foreground">Saved</span>}
-      {saveStatus === 'error' && <span className="px-1.5 py-0.5 text-[11px] rounded-md bg-destructive/10 text-destructive">Save failed</span>}
+      {saveStatus === 'saved' && <span className="ao-badge bg-foreground/[0.06] text-muted-foreground">Saved</span>}
+      {saveStatus === 'error' && <span className="ao-badge bg-destructive/10 text-destructive">Save failed</span>}
       <span className="text-[11px] text-muted-foreground/60 font-mono flex-1 truncate">
         {configPath.replace(workspacePath + '/', '')}
       </span>
-      <span className="px-1.5 py-0.5 text-[10px] rounded-md border border-border/60 text-muted-foreground/60">
+      <span className="ao-badge border border-border/60 text-muted-foreground/60">
         {config.orchestrator ? 'orchestrator' : 'pipeline'}
       </span>
-      <div className="w-px h-5 bg-border/40" />
+      <div className="ml-1" />
       <div className="flex bg-foreground/[0.04] rounded-md p-0.5">
         <button
           className={`h-6 px-2 text-[11px] rounded-[5px] inline-flex items-center gap-1 transition-colors duration-100 ${
@@ -213,7 +213,7 @@ export function ConfigEditorPage() {
         </button>
       </div>
       <button
-        className="px-2.5 py-1 text-[12px] rounded-md bg-green-600/90 text-white hover:bg-green-600 transition-colors duration-100 inline-flex items-center gap-1"
+        className="ao-btn-primary bg-green-600/90 text-white hover:bg-green-600"
         onClick={handleRun}
       >
         <Play className="h-3 w-3" /> Run
@@ -326,36 +326,36 @@ function PipelineEditor({
       <div className="p-6 space-y-6 max-w-3xl">
         {/* General */}
         <section className="space-y-3">
-          <h2 className="text-[13px] font-medium text-foreground/80">General</h2>
+          <h2 className="ao-heading">General</h2>
           <div className="space-y-1">
-            <label className="text-[12px] text-muted-foreground/80">Name</label>
+            <label className="ao-label">Name</label>
             <input
-              className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+              className="ao-input"
               value={pipe.name}
               onChange={(e) => updatePipe({ name: e.target.value })}
             />
           </div>
         </section>
 
-        <div className="h-px bg-border/40" />
+        <div className="mt-4" />
 
         {/* Defaults */}
         <section className="space-y-3">
-          <h2 className="text-[13px] font-medium text-foreground/80">Defaults</h2>
+          <h2 className="ao-heading">Defaults</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Command</label>
+              <label className="ao-label">Command</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={pipe.defaults?.command || ''}
                 onChange={(e) => updateDefaults({ command: e.target.value })}
                 placeholder="claude"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Timeout</label>
+              <label className="ao-label">Timeout</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={pipe.defaults?.timeout || ''}
                 onChange={(e) => updateDefaults({ timeout: e.target.value })}
                 placeholder="30m"
@@ -363,9 +363,9 @@ function PipelineEditor({
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] text-muted-foreground/80">Args (comma-separated)</label>
+            <label className="ao-label">Args (comma-separated)</label>
             <input
-              className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+              className="ao-input"
               value={(pipe.defaults?.args || []).join(', ')}
               onChange={(e) =>
                 updateDefaults({ args: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })
@@ -375,25 +375,25 @@ function PipelineEditor({
           </div>
         </section>
 
-        <div className="h-px bg-border/40" />
+        <div className="mt-4" />
 
         {/* Loop */}
         <section className="space-y-3">
-          <h2 className="text-[13px] font-medium text-foreground/80">Loop</h2>
+          <h2 className="ao-heading">Loop</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Count (0 = infinite)</label>
+              <label className="ao-label">Count (0 = infinite)</label>
               <input
                 type="number"
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={pipe.loop?.count ?? 0}
                 onChange={(e) => updatePipe({ loop: { ...pipe.loop, count: parseInt(e.target.value) || 0 } })}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Delay between iterations</label>
+              <label className="ao-label">Delay between iterations</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={pipe.loop?.delay || ''}
                 onChange={(e) => updatePipe({ loop: { ...pipe.loop, delay: e.target.value } })}
                 placeholder="5s"
@@ -402,7 +402,7 @@ function PipelineEditor({
           </div>
         </section>
 
-        <div className="h-px bg-border/40" />
+        <div className="mt-4" />
 
         {/* SSH */}
         {pipe.defaults?.ssh && (
@@ -411,35 +411,35 @@ function PipelineEditor({
               ssh={pipe.defaults.ssh}
               onChange={(ssh) => updateDefaults({ ssh })}
             />
-            <div className="h-px bg-border/40" />
+            <div className="mt-4" />
           </>
         )}
 
         {!pipe.defaults?.ssh && (
           <>
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-secondary"
               onClick={() => updateDefaults({ ssh: { host: '', user: '' } })}
             >
               <Plus className="h-3.5 w-3.5" /> Add SSH Remote Execution
             </button>
-            <div className="h-px bg-border/40" />
+            <div className="mt-4" />
           </>
         )}
 
         {/* Steps */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-medium text-foreground/80">Steps ({pipe.steps.length})</h2>
+            <h2 className="ao-heading">Steps ({pipe.steps.length})</h2>
             <div className="flex gap-2">
               <button
-                className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                className="ao-btn-secondary"
                 onClick={() => addStep('agent')}
               >
                 <Plus className="h-3 w-3" /> Agent Step
               </button>
               <button
-                className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+                className="ao-btn-secondary"
                 onClick={() => addStep('action')}
               >
                 <Plus className="h-3 w-3" /> Action
@@ -469,9 +469,9 @@ function SSHSection({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-[13px] font-medium text-foreground/80">SSH Remote Execution</h2>
+        <h2 className="ao-heading">SSH Remote Execution</h2>
         <button
-          className="px-2 py-1 text-[12px] rounded-md text-destructive/80 hover:text-destructive hover:bg-foreground/[0.04] transition-colors duration-100"
+          className="ao-btn-ghost text-destructive/80 hover:text-destructive"
           onClick={() => onChange(undefined)}
         >
           Remove
@@ -479,37 +479,37 @@ function SSHSection({
       </div>
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-1">
-          <label className="text-[12px] text-muted-foreground/80">Host</label>
+          <label className="ao-label">Host</label>
           <input
-            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+            className="ao-input"
             value={ssh.host || ''}
             onChange={(e) => onChange({ ...ssh, host: e.target.value })}
             placeholder="192.168.1.100"
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[12px] text-muted-foreground/80">User</label>
+          <label className="ao-label">User</label>
           <input
-            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+            className="ao-input"
             value={ssh.user || ''}
             onChange={(e) => onChange({ ...ssh, user: e.target.value })}
             placeholder="deploy"
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[12px] text-muted-foreground/80">Port</label>
+          <label className="ao-label">Port</label>
           <input
             type="number"
-            className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+            className="ao-input"
             value={ssh.port || 22}
             onChange={(e) => onChange({ ...ssh, port: parseInt(e.target.value) || 22 })}
           />
         </div>
       </div>
       <div className="space-y-1">
-        <label className="text-[12px] text-muted-foreground/80">Key File</label>
+        <label className="ao-label">Key File</label>
         <input
-          className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+          className="ao-input"
           value={ssh.key_file || ''}
           onChange={(e) => onChange({ ...ssh, key_file: e.target.value })}
           placeholder="~/.ssh/id_ed25519 (auto-detected if empty)"
@@ -518,17 +518,17 @@ function SSHSection({
       {/* tmux */}
       <div className="rounded-md border border-border/40 p-3 space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-[13px] font-medium text-foreground/80">tmux</p>
+          <p className="ao-heading">tmux</p>
           {!ssh.tmux ? (
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100"
+              className="ao-btn-secondary"
               onClick={() => onChange({ ...ssh, tmux: { session: '', ttl: '72h' } })}
             >
               Enable
             </button>
           ) : (
             <button
-              className="px-2 py-1 text-[11px] rounded-md text-destructive/80 hover:text-destructive hover:bg-foreground/[0.04] transition-colors duration-100"
+              className="ao-btn-ghost text-[11px] text-destructive/80 hover:text-destructive"
               onClick={() => onChange({ ...ssh, tmux: undefined })}
             >
               Disable
@@ -538,26 +538,26 @@ function SSHSection({
         {ssh.tmux && (
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] text-muted-foreground/60">Session Name</label>
+              <label className="ao-label">Session Name</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={ssh.tmux.session || ''}
                 onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, session: e.target.value } })}
                 placeholder="auto from step name"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] text-muted-foreground/60">TTL</label>
+              <label className="ao-label">TTL</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={ssh.tmux.ttl || '72h'}
                 onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, ttl: e.target.value } })}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[11px] text-muted-foreground/60">Log Dir</label>
+              <label className="ao-label">Log Dir</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={ssh.tmux.log_dir || ''}
                 onChange={(e) => onChange({ ...ssh, tmux: { ...ssh.tmux, log_dir: e.target.value } })}
                 placeholder="/tmp/agent-orchestra"
@@ -642,20 +642,20 @@ function OrchestratorEditor({
     <div className="flex-1 overflow-auto">
       <div className="p-6 space-y-6 max-w-3xl">
         <section className="space-y-3">
-          <h2 className="text-[13px] font-medium text-foreground/80">General</h2>
+          <h2 className="ao-heading">General</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Name</label>
+              <label className="ao-label">Name</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={orch.name}
                 onChange={(e) => updateOrch({ name: e.target.value })}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Project Root</label>
+              <label className="ao-label">Project Root</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={orch.project_root || '.'}
                 onChange={(e) => updateOrch({ project_root: e.target.value })}
               />
@@ -663,23 +663,23 @@ function OrchestratorEditor({
           </div>
         </section>
 
-        <div className="h-px bg-border/40" />
+        <div className="mt-4" />
 
         <section className="space-y-3">
-          <h2 className="text-[13px] font-medium text-foreground/80">Defaults</h2>
+          <h2 className="ao-heading">Defaults</h2>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Command</label>
+              <label className="ao-label">Command</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={orch.defaults?.command || ''}
                 onChange={(e) => updateOrch({ defaults: { ...orch.defaults, command: e.target.value } })}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Timeout</label>
+              <label className="ao-label">Timeout</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={orch.defaults?.timeout || ''}
                 onChange={(e) => updateOrch({ defaults: { ...orch.defaults, timeout: e.target.value } })}
                 placeholder="30m"
@@ -687,16 +687,16 @@ function OrchestratorEditor({
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-[12px] text-muted-foreground/80">Args (comma-separated)</label>
+            <label className="ao-label">Args (comma-separated)</label>
             <input
-              className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+              className="ao-input"
               value={(orch.defaults?.args || []).join(', ')}
               onChange={(e) => updateOrch({ defaults: { ...orch.defaults, args: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) } })}
             />
           </div>
         </section>
 
-        <div className="h-px bg-border/40" />
+        <div className="mt-4" />
 
         {/* SSH for orchestrator defaults */}
         {orch.defaults?.ssh ? (
@@ -705,44 +705,44 @@ function OrchestratorEditor({
               ssh={orch.defaults.ssh}
               onChange={(ssh) => updateOrch({ defaults: { ...orch.defaults, ssh } })}
             />
-            <div className="h-px bg-border/40" />
+            <div className="mt-4" />
           </>
         ) : (
           <>
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-secondary"
               onClick={() => updateOrch({ defaults: { ...orch.defaults, ssh: { host: '', user: '' } } })}
             >
               <Plus className="h-3.5 w-3.5" /> Add SSH Remote Execution
             </button>
-            <div className="h-px bg-border/40" />
+            <div className="mt-4" />
           </>
         )}
 
         <section className="space-y-3">
-          <h2 className="text-[13px] font-medium text-foreground/80">Runtime</h2>
+          <h2 className="ao-heading">Runtime</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Max Concurrency</label>
+              <label className="ao-label">Max Concurrency</label>
               <input
                 type="number"
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={orch.concurrency?.max || 1}
                 onChange={(e) => updateOrch({ concurrency: { max: parseInt(e.target.value) || 1 } })}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">Log Directory</label>
+              <label className="ao-label">Log Directory</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={orch.logging?.dir || './logs'}
                 onChange={(e) => updateOrch({ logging: { ...orch.logging!, dir: e.target.value, per_task: orch.logging?.per_task ?? true } })}
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[12px] text-muted-foreground/80">State File</label>
+              <label className="ao-label">State File</label>
               <input
-                className="w-full h-8 px-2.5 text-[13px] rounded-md border border-border/60 bg-transparent outline-none focus:border-foreground/20 focus:ring-1 focus:ring-foreground/10 transition-all duration-100 placeholder:text-muted-foreground/40"
+                className="ao-input"
                 value={orch.persistence?.file || ''}
                 onChange={(e) => updateOrch({ persistence: { file: e.target.value } })}
               />
@@ -764,17 +764,17 @@ function OrchestratorEditor({
                 }`}
               />
             </button>
-            <label className="text-[12px] text-muted-foreground/80">Per-task logging</label>
+            <label className="ao-label">Per-task logging</label>
           </div>
         </section>
 
-        <div className="h-px bg-border/40" />
+        <div className="mt-4" />
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-medium text-foreground/80">Triggers ({orch.triggers.length})</h2>
+            <h2 className="ao-heading">Triggers ({orch.triggers.length})</h2>
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-secondary"
               onClick={addTrigger}
             >
               <Plus className="h-3.5 w-3.5" /> Add Trigger
@@ -787,13 +787,13 @@ function OrchestratorEditor({
           </div>
         </section>
 
-        <div className="h-px bg-border/40" />
+        <div className="mt-4" />
 
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-[13px] font-medium text-foreground/80">Pipelines ({Object.keys(orch.pipelines).length})</h2>
+            <h2 className="ao-heading">Pipelines ({Object.keys(orch.pipelines).length})</h2>
             <button
-              className="px-2.5 py-1 text-[12px] rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors duration-100 inline-flex items-center gap-1"
+              className="ao-btn-secondary"
               onClick={addPipeline}
             >
               <Plus className="h-3.5 w-3.5" /> Add Pipeline
@@ -850,8 +850,8 @@ function YamlEditor({
           {error}
         </div>
       )}
-      <div className="flex flex-1 min-h-0 overflow-auto bg-[#0d0f12]">
-        <div className="py-4 pl-4 pr-2 text-right select-none text-zinc-600 text-[11px] font-mono leading-relaxed shrink-0">
+      <div className="flex flex-1 min-h-0 overflow-auto bg-[hsl(var(--terminal-bg))]">
+        <div className="py-4 pl-4 pr-2 text-right select-none text-muted-foreground/30 text-[11px] font-mono leading-relaxed shrink-0">
           {Array.from({ length: lineCount }, (_, i) => (
             <div key={i}>{i + 1}</div>
           ))}
@@ -861,7 +861,7 @@ function YamlEditor({
           value={value}
           onChange={(e) => handleChange(e.target.value)}
           spellCheck={false}
-          className="flex-1 bg-transparent text-zinc-200 text-[11px] font-mono leading-relaxed p-4 pl-2 resize-none outline-none border-none"
+          className="flex-1 bg-transparent text-[hsl(var(--terminal-fg))] text-[11px] font-mono leading-relaxed p-4 pl-2 resize-none outline-none border-none"
           style={{ tabSize: 2 }}
         />
       </div>
