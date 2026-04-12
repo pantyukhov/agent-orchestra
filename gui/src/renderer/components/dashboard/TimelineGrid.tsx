@@ -1,3 +1,4 @@
+import { motion, AnimatePresence } from 'motion/react'
 import type { AgentViewModel } from '../../lib/agent-utils'
 import type { RunRecord } from '../../types/state'
 import type { Period } from './TimelinePeriodPicker'
@@ -65,7 +66,7 @@ const barColors: Record<string, string> = {
   failure: '#ff453a',
   running: '#0a84ff',
   canceled: '#48484a',
-  stale: '#48484a'
+  stale: '#48484a',
 }
 
 function isToday(slot: TimeSlot): boolean {
@@ -78,7 +79,12 @@ export function TimelineGrid({ agents, period, onBarClick }: TimelineGridProps) 
   const colTemplate = `150px repeat(${slots.length}, 1fr)`
 
   return (
-    <div className="px-8 pb-7">
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2, duration: 0.4, ease: 'easeOut' }}
+      className="px-8 pb-7"
+    >
       <div
         className="text-xs font-semibold uppercase mb-[14px]"
         style={{ color: '#86868b', letterSpacing: '0.08em' }}
@@ -86,7 +92,8 @@ export function TimelineGrid({ agents, period, onBarClick }: TimelineGridProps) 
         Activity
       </div>
 
-      <div
+      <motion.div
+        layout
         className="rounded-[14px] overflow-hidden"
         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
       >
@@ -99,24 +106,33 @@ export function TimelineGrid({ agents, period, onBarClick }: TimelineGridProps) 
           }}
         >
           <div className="p-3 px-4" />
-          {slots.map((slot, i) => (
-            <div
-              key={i}
-              className="p-3 px-2 text-center text-[11px] font-medium"
-              style={{
-                color: isToday(slot) ? '#f5f5f7' : '#48484a',
-                fontWeight: isToday(slot) ? 600 : 500,
-              }}
-            >
-              {slot.label}
-            </div>
-          ))}
+          <AnimatePresence mode="popLayout">
+            {slots.map((slot, i) => (
+              <motion.div
+                key={`${period}-${i}`}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ delay: i * 0.02, duration: 0.2 }}
+                className="p-3 px-2 text-center text-[11px] font-medium"
+                style={{
+                  color: isToday(slot) ? '#f5f5f7' : '#48484a',
+                  fontWeight: isToday(slot) ? 600 : 500,
+                }}
+              >
+                {slot.label}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
 
         {/* Agent rows */}
         {agents.map((agent, ai) => (
-          <div
+          <motion.div
             key={agent.configPath}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 + ai * 0.05, type: 'spring', stiffness: 300, damping: 24 }}
             className="grid items-center"
             style={{
               gridTemplateColumns: colTemplate,
@@ -146,16 +162,27 @@ export function TimelineGrid({ agents, period, onBarClick }: TimelineGridProps) 
               return (
                 <div key={si} className="flex gap-[3px] justify-center py-2 px-[6px]">
                   {slotRuns.map((run, ri) => (
-                    <div
+                    <motion.div
                       key={ri}
+                      initial={{ scaleY: 0, opacity: 0 }}
+                      animate={
+                        run.status === 'running'
+                          ? { scaleY: 1, opacity: [0.9, 0.4, 0.9] }
+                          : { scaleY: 1, opacity: 0.9 }
+                      }
+                      transition={
+                        run.status === 'running'
+                          ? { scaleY: { delay: 0.4 + si * 0.03 + ri * 0.02 }, opacity: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } }
+                          : { delay: 0.4 + si * 0.03 + ri * 0.02, type: 'spring', stiffness: 300, damping: 20 }
+                      }
+                      whileHover={onBarClick ? { scaleY: 1.3, scaleX: 1.5 } : {}}
                       style={{
                         width: 6,
                         height: 22,
                         borderRadius: 3,
                         background: barColors[run.status] ?? '#48484a',
-                        opacity: 0.9,
                         cursor: onBarClick ? 'pointer' : undefined,
-                        animation: run.status === 'running' ? 'pulse 2s ease-in-out infinite' : undefined,
+                        originY: 1,
                       }}
                       onClick={() => onBarClick?.(run)}
                     />
@@ -163,16 +190,21 @@ export function TimelineGrid({ agents, period, onBarClick }: TimelineGridProps) 
                 </div>
               )
             })}
-          </div>
+          </motion.div>
         ))}
 
         {/* Empty state */}
         {agents.length === 0 && (
-          <div className="flex items-center justify-center py-12 text-sm text-[#48484a]">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center justify-center py-12 text-sm text-[#48484a]"
+          >
             No activity yet
-          </div>
+          </motion.div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
