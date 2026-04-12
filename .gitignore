@@ -12,6 +12,12 @@ gui/node_modules/
 gui/out/
 gui/dist/
 gui/release/
+gui/test-results/
+
+# Node (root level, from electron-rebuild etc.)
+node_modules/
+package.json
+package-lock.json
 
 # OS
 .DS_Store
