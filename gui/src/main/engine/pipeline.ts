@@ -1,5 +1,5 @@
 import type { PipelineConfig, StepConfig, DefaultsConfig, RunResult, PipelineEvent } from './types'
-import { resolveOnError, resolveSSH, parseDuration, formatDuration } from './config'
+import { resolveCommand, resolveOnError, resolveSSH, parseDuration, formatDuration } from './config'
 import { runLocal } from './runner'
 import { runSSH } from './ssh-runner'
 import { renderStep, ensureStepEntries } from './template'
@@ -12,6 +12,7 @@ export interface PipelineContext {
   history: HistoryStore
   emit: (event: PipelineEvent) => void
   runId?: string
+  sessionIds: Record<string, string>
 }
 
 export async function executePipeline(
@@ -89,6 +90,11 @@ async function runSteps(
       const result = await runAgent(rendered, ctx)
       const onError = resolveOnError(rendered, ctx.defaults)
 
+      // Store session ID for subsequent steps to resume
+      if (result.sessionId) {
+        ctx.sessionIds[step.name || ''] = result.sessionId
+      }
+
       // Record in history
       ctx.history.addStep(record, {
         name: rendered.name || 'unnamed',
@@ -96,7 +102,8 @@ async function runSteps(
         duration: formatDuration(result.durationMs),
         exit_code: result.exitCode,
         error: result.error,
-        output: result.output ? result.output.slice(0, 4096) : undefined
+        output: result.output ? result.output.slice(0, 4096) : undefined,
+        session_id: result.sessionId
       })
 
       // Store output for templates
@@ -133,8 +140,8 @@ async function runAgent(step: StepConfig, ctx: PipelineContext): Promise<RunResu
   const retryDelay = step.retry_delay ? parseDuration(step.retry_delay) : 1000
   const sshCfg = resolveSSH(step, ctx.defaults)
 
-  const [command, args] = [step.command || ctx.defaults.command || '', []]
-  ctx.emit({ type: 'step:started', stepName: step.name || '', command: `${command} ${(step.args || ctx.defaults.args || []).join(' ')}` })
+  const [command, args] = resolveCommand(step, ctx.defaults, ctx.sessionIds)
+  ctx.emit({ type: 'step:started', stepName: step.name || '', command: `${command} ${args.join(' ')}` })
 
   let lastResult: RunResult = { exitCode: -1, durationMs: 0, error: 'no attempts' }
 
