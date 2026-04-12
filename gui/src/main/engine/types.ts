@@ -117,6 +117,7 @@ export interface RunResult {
   durationMs: number
   error?: string
   output?: string
+  sessionId?: string
 }
 
 export interface RunRecord {
